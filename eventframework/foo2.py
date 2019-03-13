@@ -11,21 +11,21 @@ fixed_rate_order_blueprint_definition = {
     "name": "fixed_rate_order_blueprint_definition",
     "conditions": [
         {
-            "events": ["new_order"],
+            "filter_events": ["new_order"],
             "outcome": {
                 "action": "action_check_for_deposit",
                 "adapter": "adapter_check_deposit_when_new_order"
             }
         },
         {
-            "events": ["deposit_status"],
-            "outcome" : {
+            "filter_events": ["deposit_status"],
+            "outcome": {
                 "action": "from_holding_branch",
                 "adapter": "adapter_from_holding_when_deposit_status"
             }
         },
         {
-            "events": ["deposit_status"],
+            "filter_events": ["deposit_status"],
             "outcome": {
                 "action": "to_holding_branch",
                 "adapter": "adapter_to_holding_branch_when_deposit_status"
@@ -57,7 +57,6 @@ class BlueprintConditionOutcome:
     adapter: Adapter
 
 
-
 def generate_random_id():
     return str(uuid.uuid4())
 
@@ -65,7 +64,7 @@ def generate_random_id():
 @dataclass
 class BlueprintCondition:
     id_: str = field(default_factory=generate_random_id)
-    events: List[Event]
+    filter_events: List[str]
     outcome: BlueprintConditionOutcome
 
 
@@ -116,27 +115,30 @@ class BlueprintManager:
             raise InvalidBlueprintDefinition("Blueprint definition must have key 'conditions'")
 
         for i, condition in enumerate(blueprint_conditions):
-            if 'events' not in condition or 'outcome' not in condition:
-                raise InvalidBlueprintDefinition(f"Condition must have key 'events' and 'outcome': {condition}")
+            if 'filter_events' not in condition or 'outcome' not in condition:
+                raise InvalidBlueprintDefinition(f"Condition must have keys 'filter_events' and 'outcome': {condition}")
             for outcome_attribute_name in self.condition_outcome_attribute_names:
                 component_name_by_attribute_name = condition['outcome']
                 component_name = component_name_by_attribute_name.get(outcome_attribute_name)
                 if not component_name:
-                    raise InvalidBlueprintDefinition(f"Condition Outcome attribute '{outcome_attribute_name}' must exist inside condition 'outcome' of {condition}")
+                    raise InvalidBlueprintDefinition(
+                        f"Condition Outcome attribute '{outcome_attribute_name}' must exist inside condition 'outcome' of {condition}")
 
                 component_object = self.config['namespace'][outcome_attribute_name].get(component_name)
                 if not component_object:
-                    raise InvalidBlueprintDefinition(f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
+                    raise InvalidBlueprintDefinition(
+                        f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
 
     def _objectify_condition(self, condition_definition: Dict) -> BlueprintCondition:
         def _objectify(attribute, component_name):
             return self.config['namespace'][attribute][component_name]
 
-        outcome = BlueprintConditionOutcome()
-        outcome.action = _objectify('action', condition_definition['outcome']['action'])
-        outcome.adapter = _objectify('adapter', condition_definition['outcome']['adapter'])
+        outcome = BlueprintConditionOutcome(
+            action=_objectify('action', condition_definition['outcome']['action']),
+            adapter=_objectify('adapter', condition_definition['outcome']['adapter'])
+        )
 
-        return BlueprintCondition(condition_definition['events'], outcome)
+        return BlueprintCondition(filter_events=condition_definition['filter_events'], outcome=outcome)
 
     def _convert_blueprint_definition_to_object(self, blueprint_definition) -> Blueprint:
         conditions = []
@@ -230,9 +232,9 @@ class BlueprintExecutor:
 
     def _process_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
         log.info(f"Processing BlueprintCondition {condition}")
-        events: List[Event] = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
+        events: List[Event] = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.filter_events)
         if not events:
-            log.info(f"Could not find necessary events {events} in event_bus to execute Outcome of this condition")
+            log.info(f"Could not find necessary events {condition.filter_events} in event_bus to execute outcome of this condition")
             return
         outcome_result = self._execute_outcome(condition.outcome, blueprint_execution.execution_context, events)
         self.blueprint_execution_store.mark_condition_complete(blueprint_execution, condition, outcome_result)
@@ -245,8 +247,6 @@ class BlueprintExecutor:
         action_result = outcome.action.act(adapter_result)
         log.info(f"Action result - {action_result}")
         return action_result
-
-
 
 
 def add_new_order_for_execution():
@@ -264,7 +264,5 @@ def add_new_order_for_execution():
 
 def execute():
     pass
-
-
 
 # TODO: Event - what does it mean to have event definition and event class. Should i model it as event_name in the condition
