@@ -71,6 +71,8 @@ class BlueprintManager:
     def add_blueprint(self, blueprint_definition):
         self._validate_blueprint_definition(blueprint_definition)
         blueprint = self._convert_blueprint_definition_to_object(blueprint_definition)
-        if blueprint.name in self.live_blueprints_by_name:
-            raise InvalidBlueprintDefinition(f"Blueprint with name {blueprint_definition['name']} is already added")
+
+        preexisting_blueprint = self.live_blueprints_by_name.get(blueprint.name)
+        if preexisting_blueprint:
+            raise InvalidBlueprintDefinition(f"Blueprint with name {blueprint.name} is already added: {preexisting_blueprint}")
         self.live_blueprints_by_name[blueprint.name] = blueprint
