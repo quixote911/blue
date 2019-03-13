@@ -113,8 +113,13 @@ class BlueprintManager:
         def _objectify(attribute, component_name):
             return self.config['namespace'][attribute][component_name]
 
-        mydict = {}
+        mydict = {} # TODO Rename
         for attribute, component_name in condition_definition:
+            if isinstance(component_name, list):
+                mydict[attribute] = []
+                for cname in component_name:
+                    mydict[attribute].append(_objectify(attribute, cname))
+
             mydict[attribute] = _objectify(attribute, component_name)
 
         return BlueprintCondition(**mydict)
@@ -204,7 +209,7 @@ class BlueprintExecutor:
             log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}")
             for condition in blueprint_execution.blueprint.conditions:  # TODO: parallel
                 log.info(f"Processing BlueprintCondition {condition}")
-                events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, events)
+                events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
                 if not events:
                     log.info(f"Could not find events {events} in event_bus")
                     continue
