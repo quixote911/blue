@@ -141,8 +141,7 @@ class BlueprintExecutionStore:
     def store(self, blueprint_execution: BlueprintExecution):
         pass
 
-    def get_execution_to_process(self) -> BlueprintExecution:
-        # round robin
+    def get_execution_to_process(self, worker_id) -> BlueprintExecution:
         pass
 
 
@@ -183,7 +182,11 @@ class BlueprintExecutor:
         self.blueprint_execution_store = blueprint_execution_store
         self.event_bus = event_bus
         self.blueprint_manager = blueprint_manager
-        # self.system_id = None
+
+        self.worker_id = self._get_worker_id()
+
+    def _get_worker_id(self):
+        return "dummy_worker_id"
 
     def run(self):
         log.info('Starting BlueprintExecutor')
@@ -194,26 +197,28 @@ class BlueprintExecutor:
                 time.sleep(self.DEFAULT_POLL_TIME)
             iteration_count += 1
 
-            blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process()
+            blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process(self.worker_id)
             if not blueprint_execution:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
                 continue
             log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}")
             for condition in blueprint_execution.blueprint.conditions:  # TODO: parallel
                 log.info(f"Processing BlueprintCondition {condition}")
-                events = self._get_necessary_events(condition.events)
+                events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, events)
                 if not events:
                     log.info(f"Could not find events {events} in event_bus")
                     continue
 
-                log.info(f"Found events {events}. Executing Condition - Action {condition.action} with Adapter {condition.adapter}")
-                self._execute_condition(blueprint_execution, condition)
+                self._execute_condition(blueprint_execution, condition, events)
 
-    def _get_necessary_events(self, events: List[Event]) -> Optional[List[Event]]:
-        pass
+    def _execute_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition, events: List[Event]):
+        log.info(f"Found events {events}. Executing Condition - Action {condition.action} with Adapter {condition.adapter} in context {blueprint_execution.execution_context}")
+        adapter_result = condition.adapter.adapt(events, blueprint_execution.execution_context)
+        log.info(f"Adapter result - {adapter_result}")
+        action_result = condition.action.act(adapter_result)
+        log.info(f"Action result - {action_result}")
 
-    def _execute_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
-        pass
+
 
 
 def add_new_order_for_execution():
@@ -231,3 +236,7 @@ def add_new_order_for_execution():
 
 def execute():
     pass
+
+
+
+# TODO: Event - what does it mean to have event definition and event class. Should i model it as event_name in the condition
