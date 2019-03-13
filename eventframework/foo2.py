@@ -1,8 +1,11 @@
+import logging
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
 import time
 from dataclasses import dataclass
+
+log = logging.getLogger(__name__)
 
 fixed_rate_order_blueprint_definition = {
     "name": "fixed_rate_order_blueprint_definition",
@@ -44,7 +47,7 @@ class Adapter:
 
 @dataclass
 class BlueprintCondition:
-    events: Event
+    events: List[Event]
     action: Action
     adapter: Adapter
 
@@ -156,7 +159,7 @@ class BlueprintExecutionManager:
     def __init__(self, blueprint_manager: BlueprintManager, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
         self.manager = blueprint_manager
         self.event_bus = event_bus
-        self.blueprint_execution_store = blueprint_execution_store
+        self.execution_store = blueprint_execution_store
 
     def _select_blueprint(self, execution_context: Dict) -> Blueprint:
         blueprint_name = "fixed_rate_order_blueprint"  # hardcoding for now
@@ -169,7 +172,7 @@ class BlueprintExecutionManager:
         boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
 
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)
-        self.blueprint_execution_store.store(blueprint_execution)
+        self.execution_store.store(blueprint_execution)
         self.event_bus.publish(boot_event)
 
 
@@ -180,36 +183,36 @@ class BlueprintExecutor:
         self.blueprint_execution_store = blueprint_execution_store
         self.event_bus = event_bus
         self.blueprint_manager = blueprint_manager
+        # self.system_id = None
 
     def run(self):
-        while True:
+        log.info('Starting BlueprintExecutor')
+        iteration_count = 0
+        while True:  # TODO: Maybe parallel
+            if iteration_count != 0:
+                log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
+                time.sleep(self.DEFAULT_POLL_TIME)
+            iteration_count += 1
+
             blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process()
-
-            blueprint_execution_id = blueprint_execution.execution_id
-            conditions_to_process = blueprint_execution.blueprint.conditions
-            for condition in conditions_to_process:
-                events = self._get_necessary_events(condition)
+            if not blueprint_execution:
+                log.info("No BlueprintExecution found from blueprint_execution_store")
+                continue
+            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}")
+            for condition in blueprint_execution.blueprint.conditions:  # TODO: parallel
+                log.info(f"Processing BlueprintCondition {condition}")
+                events = self._get_necessary_events(condition.events)
                 if not events:
-                    break
-                conditions_with_objects = self.blueprint_manager
-                self._process_condition(blueprint_execution, condition)
-                """
-                Narrative:
-                    Check event bus for latest events of condition['events']
-                    If did not receive:
-                        break.
-                    If received:
-                        call adapter with blueprint_execution.context and events
-                        send output of adapter to action
-                        mark condition successfully evaluated
-                """
+                    log.info(f"Could not find events {events} in event_bus")
+                    continue
 
-            time.sleep(self.DEFAULT_POLL_TIME)
+                log.info(f"Found events {events}. Executing Condition - Action {condition.action} with Adapter {condition.adapter}")
+                self._execute_condition(blueprint_execution, condition)
 
-    def _get_necessary_events(self, condition):
+    def _get_necessary_events(self, events: List[Event]) -> Optional[List[Event]]:
         pass
 
-    def _process_condition(self, blueprint_execution: BlueprintExecution, condition):
+    def _execute_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
         pass
 
 
