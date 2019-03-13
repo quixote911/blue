@@ -1,6 +1,7 @@
 import uuid
 from typing import Dict, List
 
+import time
 from dataclasses import dataclass
 
 fixed_rate_order_blueprint_definition = {
@@ -39,6 +40,13 @@ class Blueprint:
 class Event:
     metadata: Dict
     body: Dict
+
+
+@dataclass
+class BlueprintExecution:
+    execution_id: str
+    execution_context: Dict
+    blueprint: Blueprint
 
 
 class BlueprintManager:
@@ -90,7 +98,11 @@ class BlueprintExecutionStore:
     def __init__(self, config):
         pass
 
-    def store(self, blueprint: Blueprint, blueprint_execution_id: str):
+    def store(self, blueprint_execution: BlueprintExecution):
+        pass
+
+    def get_execution_to_process(self) -> BlueprintExecution:
+        # round robin
         pass
 
 
@@ -109,19 +121,60 @@ class BlueprintExecutionManager:
         self.event_bus = event_bus
         self.blueprint_execution_store = blueprint_execution_store
 
-    def _select_blueprint(self, params: Dict) -> Blueprint:
+    def _select_blueprint(self, execution_context: Dict) -> Blueprint:
         blueprint_name = "fixed_rate_order_blueprint"  # hardcoding for now
         return self.manager.live_blueprints_by_name[blueprint_name]
 
-    def start_execution(self, boot_event: Event, blueprint_selector_params: Dict):
-        blueprint = self._select_blueprint(blueprint_selector_params)
+    def start_execution(self, boot_event: Event, execution_context: Dict):
+        blueprint = self._select_blueprint(execution_context)
 
         blueprint_execution_id = uuid.uuid4()
         boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
 
-        self.blueprint_execution_store.store(blueprint, blueprint_execution_id)
+        blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)
+        self.blueprint_execution_store.store(blueprint_execution)
         self.event_bus.publish(boot_event)
 
 
-if __name__ == "__main__":
+class BlueprintExecutor:
+    DEFAULT_POLL_TIME = 10
+
+    def __init__(self, blueprint_execution_store: BlueprintExecutionStore, event_bus: EventBus):
+        self.blueprint_execution_store = blueprint_execution_store
+        self.event_bus = event_bus
+
+    def run(self):
+        while True:
+            time.sleep(self.DEFAULT_POLL_TIME)
+            blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process()
+
+            blueprint_execution_id = blueprint_execution.execution_id
+            conditions_to_process = blueprint_execution.blueprint.conditions
+            for condition in conditions_to_process:
+                """
+                Narrative:
+                    Check event bus for latest events of condition['events']
+                    If did not receive:
+                        break.
+                    If received:
+                        call adapter with blueprint_execution.context and events
+                        send output of adapter to action
+                        mark condition successfully evaluated
+                """
+
+
+def add_new_order_for_execution():
+    blueprint_manager_config = []
+    blueprint_manager = BlueprintManager(blueprint_manager_config)
+    blueprint_manager.add_blueprint(fixed_rate_order_blueprint_definition)
+
+    event_bus = EventBus()
+    execution_store = BlueprintExecutionStore()
+    execution_manager = BlueprintExecutionManager(blueprint_manager, event_bus, execution_store)
+
+    new_order_event = Event()
+    execution_manager.start_execution(new_order_event, dict())
+
+
+def execute():
     pass
