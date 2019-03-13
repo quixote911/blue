@@ -3,7 +3,7 @@ import uuid
 from typing import Dict, List, Optional, Union
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 log = logging.getLogger(__name__)
 
@@ -12,24 +12,30 @@ fixed_rate_order_blueprint_definition = {
     "conditions": [
         {
             "events": ["new_order"],
-            "action": "action_check_for_deposit",
-            "adapter": "adapter_check_deposit_when_new_order"
+            "outcome": {
+                "action": "action_check_for_deposit",
+                "adapter": "adapter_check_deposit_when_new_order"
+            }
         },
         {
             "events": ["deposit_status"],
-            "action": "from_holding_branch",
-            "adapter": "adapter_from_holding_when_deposit_status"
+            "outcome" : {
+                "action": "from_holding_branch",
+                "adapter": "adapter_from_holding_when_deposit_status"
+            }
         },
         {
             "events": ["deposit_status"],
-            "action": "to_holding_branch",
-            "adapter": "adapter_to_holding_branch_when_deposit_status"
+            "outcome": {
+                "action": "to_holding_branch",
+                "adapter": "adapter_to_holding_branch_when_deposit_status"
+            }
         }
     ]
 }
 
 
-class InvalidBlueprintException(Exception):
+class InvalidBlueprintDefinition(Exception):
     pass
 
 
@@ -46,10 +52,21 @@ class Adapter:
 
 
 @dataclass
-class BlueprintCondition:
-    events: List[Event]
+class BlueprintConditionOutcome:
     action: Action
     adapter: Adapter
+
+
+
+def generate_random_id():
+    return str(uuid.uuid4())
+
+
+@dataclass
+class BlueprintCondition:
+    id_: str = field(default_factory=generate_random_id)
+    events: List[Event]
+    outcome: BlueprintConditionOutcome
 
 
 @dataclass
@@ -72,7 +89,7 @@ class BlueprintExecution:
 
 
 class BlueprintManager:
-    blueprint_condition_attribute_names = dict(BlueprintCondition).keys()
+    condition_outcome_attribute_names = dict(BlueprintConditionOutcome).keys()
 
     def __init__(self, config):
         BlueprintManager.validate_config(config)
@@ -82,49 +99,46 @@ class BlueprintManager:
     @staticmethod
     def validate_config(config):
         if 'namespace' not in config:
-            raise InvalidBlueprintException(f"Config must have 'namespace' key")
-        for each in BlueprintManager.blueprint_condition_attribute_names:
+            raise InvalidBlueprintDefinition(f"Config must have 'namespace' key")
+        for each in BlueprintManager.condition_outcome_attribute_names:
             if each not in config['namespace']:
-                raise InvalidBlueprintException(f"Namespace must have key '{each}'")
+                raise InvalidBlueprintDefinition(f"Namespace must have key '{each}'")
 
     def _validate_blueprint_definition(self, blueprint_definition):
         if not blueprint_definition:
-            raise InvalidBlueprintException(f"Blueprint definition seems to be empty")
+            raise InvalidBlueprintDefinition(f"Blueprint definition seems to be empty")
 
         if 'name' not in blueprint_definition:
-            raise InvalidBlueprintException(f"Blueprint definition must have key 'name'")
+            raise InvalidBlueprintDefinition(f"Blueprint definition must have key 'name'")
 
         blueprint_conditions = blueprint_definition.get('conditions')
         if not blueprint_conditions:
-            raise InvalidBlueprintException("Blueprint definition must have key 'conditions'")
+            raise InvalidBlueprintDefinition("Blueprint definition must have key 'conditions'")
 
         for i, condition in enumerate(blueprint_conditions):
-            for condition_attribute_name in self.blueprint_condition_attribute_names:
-
-                component_name = condition.get(condition_attribute_name)
+            if 'events' not in condition or 'outcome' not in condition:
+                raise InvalidBlueprintDefinition(f"Condition must have key 'events' and 'outcome': {condition}")
+            for outcome_attribute_name in self.condition_outcome_attribute_names:
+                component_name_by_attribute_name = condition['outcome']
+                component_name = component_name_by_attribute_name.get(outcome_attribute_name)
                 if not component_name:
-                    raise InvalidBlueprintException(f"Component '{component_name}' must exist inside {i}th condition in blueprint_definition")
+                    raise InvalidBlueprintDefinition(f"Condition Outcome attribute '{outcome_attribute_name}' must exist inside condition 'outcome' of {condition}")
 
-                component_object = self.config['namespace'][condition_attribute_name].get(component_name)
+                component_object = self.config['namespace'][outcome_attribute_name].get(component_name)
                 if not component_object:
-                    raise InvalidBlueprintException(f"As per configured namespace, no mapping found for {condition_attribute_name} {component_name}")
+                    raise InvalidBlueprintDefinition(f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
 
     def _objectify_condition(self, condition_definition: Dict) -> BlueprintCondition:
         def _objectify(attribute, component_name):
             return self.config['namespace'][attribute][component_name]
 
-        mydict = {} # TODO Rename
-        for attribute, component_name in condition_definition:
-            if isinstance(component_name, list):
-                mydict[attribute] = []
-                for cname in component_name:
-                    mydict[attribute].append(_objectify(attribute, cname))
+        outcome = BlueprintConditionOutcome()
+        outcome.action = _objectify('action', condition_definition['outcome']['action'])
+        outcome.adapter = _objectify('adapter', condition_definition['outcome']['adapter'])
 
-            mydict[attribute] = _objectify(attribute, component_name)
+        return BlueprintCondition(condition_definition['events'], outcome)
 
-        return BlueprintCondition(**mydict)
-
-    def _convert_definitions_to_concrete(self, blueprint_definition) -> Blueprint:
+    def _convert_blueprint_definition_to_object(self, blueprint_definition) -> Blueprint:
         conditions = []
         for definition in blueprint_definition['conditions']:
             condition: BlueprintCondition = self._objectify_condition(definition)
@@ -133,9 +147,9 @@ class BlueprintManager:
 
     def add_blueprint(self, blueprint_definition):
         self._validate_blueprint_definition(blueprint_definition)
-        blueprint = self._convert_definitions_to_concrete(blueprint_definition)
+        blueprint = self._convert_blueprint_definition_to_object(blueprint_definition)
         if blueprint.name in self.live_blueprints_by_name:
-            raise InvalidBlueprintException(f"Blueprint with name {blueprint_definition['name']} is already added")
+            raise InvalidBlueprintDefinition(f"Blueprint with name {blueprint_definition['name']} is already added")
         self.live_blueprints_by_name[blueprint.name] = blueprint
 
 
@@ -189,39 +203,49 @@ class BlueprintExecutor:
         self.blueprint_manager = blueprint_manager
 
         self.worker_id = self._get_worker_id()
+        self.iteration_count = 0
 
     def _get_worker_id(self):
         return "dummy_worker_id"
 
+    def _sleep(self):
+        if self.iteration_count != 0:
+            log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
+            time.sleep(self.DEFAULT_POLL_TIME)
+        self.iteration_count += 1
+
     def run(self):
         log.info('Starting BlueprintExecutor')
-        iteration_count = 0
         while True:  # TODO: Maybe parallel
-            if iteration_count != 0:
-                log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
-                time.sleep(self.DEFAULT_POLL_TIME)
-            iteration_count += 1
+            self._sleep()
 
             blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process(self.worker_id)
             if not blueprint_execution:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
                 continue
-            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}")
-            for condition in blueprint_execution.blueprint.conditions:  # TODO: parallel
-                log.info(f"Processing BlueprintCondition {condition}")
-                events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
-                if not events:
-                    log.info(f"Could not find events {events} in event_bus")
-                    continue
 
-                self._execute_condition(blueprint_execution, condition, events)
+            conditions_to_process = [c for c in blueprint_execution.blueprint.conditions if c.status != 'PROCESSED']
+            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. conditions_to_process={conditions_to_process}")
+            for condition in conditions_to_process:  # TODO: parallel
+                self._process_condition(blueprint_execution, condition)
 
-    def _execute_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition, events: List[Event]):
-        log.info(f"Found events {events}. Executing Condition - Action {condition.action} with Adapter {condition.adapter} in context {blueprint_execution.execution_context}")
-        adapter_result = condition.adapter.adapt(events, blueprint_execution.execution_context)
+    def _process_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
+        log.info(f"Processing BlueprintCondition {condition}")
+        events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
+        if not events:
+            log.info(f"Could not find necessary events {events} in event_bus to execute Outcome of this condition")
+            return
+        outcome_result = self._execute_outcome(condition.outcome, blueprint_execution.execution_context, events)
+        self.blueprint_execution_store.complete_condition(blueprint_execution, condition, outcome_result)
+        return outcome_result
+
+    def _execute_outcome(self, outcome: BlueprintConditionOutcome, execution_context: Dict, events: List[Event]):
+        log.info(f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
+        adapter_result = outcome.adapter.adapt(events, execution_context)
         log.info(f"Adapter result - {adapter_result}")
-        action_result = condition.action.act(adapter_result)
+        action_result = outcome.action.act(adapter_result)
         log.info(f"Action result - {action_result}")
+        return action_result
 
 
 
