@@ -1,3 +1,6 @@
+class BlueError(Exception):
+    pass
+
 class Event:
     pass
 

@@ -1,9 +1,10 @@
 from typing import Dict
 
+from blue.base import BlueError
 from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint
 
 
-class InvalidBlueprintDefinition(Exception):
+class InvalidBlueprintDefinition(BlueError):
     pass
 
 
