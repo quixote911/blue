@@ -9,23 +9,23 @@ log = logging.getLogger(__name__)
 
 fixed_rate_order_blueprint_definition = {
     "name": "fixed_rate_order_blueprint_definition",
-    "conditions": [
+    "instructions": [
         {
-            "filter_events": ["new_order"],
+            "conditions": ["new_order"],
             "outcome": {
                 "action": "action_check_for_deposit",
                 "adapter": "adapter_check_deposit_when_new_order"
             }
         },
         {
-            "filter_events": ["deposit_status"],
+            "conditions": ["deposit_status"],
             "outcome": {
                 "action": "from_holding_branch",
                 "adapter": "adapter_from_holding_when_deposit_status"
             }
         },
         {
-            "filter_events": ["deposit_status"],
+            "conditions": ["deposit_status"],
             "outcome": {
                 "action": "to_holding_branch",
                 "adapter": "adapter_to_holding_branch_when_deposit_status"
@@ -52,7 +52,7 @@ class Adapter:
 
 
 @dataclass
-class BlueprintConditionOutcome:
+class BlueprintInstructionOutcome:
     action: Action
     adapter: Adapter
 
@@ -62,16 +62,16 @@ def generate_random_id():
 
 
 @dataclass
-class BlueprintCondition:
+class BlueprintInstruction:
     id_: str = field(default_factory=generate_random_id)
-    filter_events: List[str]
-    outcome: BlueprintConditionOutcome
+    conditions: List[str]
+    outcome: BlueprintInstructionOutcome
 
 
 @dataclass
 class Blueprint:
     name: str
-    conditions: List[BlueprintCondition]
+    instructions: List[BlueprintInstruction]
 
 
 @dataclass
@@ -88,7 +88,7 @@ class BlueprintExecution:
 
 
 class BlueprintManager:
-    condition_outcome_attribute_names = dict(BlueprintConditionOutcome).keys()
+    instruction_outcome_attribute_names = dict(BlueprintInstructionOutcome).keys()
 
     def __init__(self, config):
         BlueprintManager.validate_config(config)
@@ -99,7 +99,7 @@ class BlueprintManager:
     def validate_config(config):
         if 'namespace' not in config:
             raise InvalidBlueprintDefinition(f"Config must have 'namespace' key")
-        for each in BlueprintManager.condition_outcome_attribute_names:
+        for each in BlueprintManager.instruction_outcome_attribute_names:
             if each not in config['namespace']:
                 raise InvalidBlueprintDefinition(f"Namespace must have key '{each}'")
 
@@ -110,42 +110,42 @@ class BlueprintManager:
         if 'name' not in blueprint_definition:
             raise InvalidBlueprintDefinition(f"Blueprint definition must have key 'name'")
 
-        blueprint_conditions = blueprint_definition.get('conditions')
-        if not blueprint_conditions:
-            raise InvalidBlueprintDefinition("Blueprint definition must have key 'conditions'")
+        blueprint_instructions = blueprint_definition.get('instructions')
+        if not blueprint_instructions:
+            raise InvalidBlueprintDefinition("Blueprint definition must have key 'instructions'")
 
-        for i, condition in enumerate(blueprint_conditions):
-            if 'filter_events' not in condition or 'outcome' not in condition:
-                raise InvalidBlueprintDefinition(f"Condition must have keys 'filter_events' and 'outcome': {condition}")
-            for outcome_attribute_name in self.condition_outcome_attribute_names:
-                component_name_by_attribute_name = condition['outcome']
+        for i, instruction in enumerate(blueprint_instructions):
+            if 'conditions' not in instruction or 'outcome' not in instruction:
+                raise InvalidBlueprintDefinition(f"Instruction must have keys 'conditions' and 'outcome': {instruction}")
+            for outcome_attribute_name in self.instruction_outcome_attribute_names:
+                component_name_by_attribute_name = instruction['outcome']
                 component_name = component_name_by_attribute_name.get(outcome_attribute_name)
                 if not component_name:
                     raise InvalidBlueprintDefinition(
-                        f"Condition Outcome attribute '{outcome_attribute_name}' must exist inside condition 'outcome' of {condition}")
+                        f"Instruction Outcome attribute '{outcome_attribute_name}' must exist inside instruction 'outcome' of {instruction}")
 
                 component_object = self.config['namespace'][outcome_attribute_name].get(component_name)
                 if not component_object:
                     raise InvalidBlueprintDefinition(
                         f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
 
-    def _objectify_condition(self, condition_definition: Dict) -> BlueprintCondition:
+    def _objectify_instruction(self, instruction_definition: Dict) -> BlueprintInstruction:
         def _objectify(attribute, component_name):
             return self.config['namespace'][attribute][component_name]
 
-        outcome = BlueprintConditionOutcome(
-            action=_objectify('action', condition_definition['outcome']['action']),
-            adapter=_objectify('adapter', condition_definition['outcome']['adapter'])
+        outcome = BlueprintInstructionOutcome(
+            action=_objectify('action', instruction_definition['outcome']['action']),
+            adapter=_objectify('adapter', instruction_definition['outcome']['adapter'])
         )
 
-        return BlueprintCondition(filter_events=condition_definition['filter_events'], outcome=outcome)
+        return BlueprintInstruction(conditions=instruction_definition['conditions'], outcome=outcome)
 
     def _convert_blueprint_definition_to_object(self, blueprint_definition) -> Blueprint:
-        conditions = []
-        for definition in blueprint_definition['conditions']:
-            condition: BlueprintCondition = self._objectify_condition(definition)
-            conditions.append(condition)
-        return Blueprint(blueprint_definition['name'], conditions)
+        instructions = []
+        for definition in blueprint_definition['instructions']:
+            instruction: BlueprintInstruction = self._objectify_instruction(definition)
+            instructions.append(instruction)
+        return Blueprint(blueprint_definition['name'], instructions)
 
     def add_blueprint(self, blueprint_definition):
         self._validate_blueprint_definition(blueprint_definition)
@@ -225,22 +225,22 @@ class BlueprintExecutor:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
                 continue
 
-            conditions_to_process = [c for c in blueprint_execution.blueprint.conditions if c.status != 'PROCESSED']
-            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. conditions_to_process={conditions_to_process}")
-            for condition in conditions_to_process:  # TODO: parallel
-                self._process_condition(blueprint_execution, condition)
+            instructions_to_process = [c for c in blueprint_execution.blueprint.instructions if c.status != 'PROCESSED']
+            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. instructions_to_process={instructions_to_process}")
+            for instruction in instructions_to_process:  # TODO: parallel
+                self._process_instruction(blueprint_execution, instruction)
 
-    def _process_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
-        log.info(f"Processing BlueprintCondition {condition}")
-        events: List[Event] = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.filter_events)
+    def _process_instruction(self, blueprint_execution: BlueprintExecution, instruction: BlueprintInstruction):
+        log.info(f"Processing BlueprintInstruction {instruction}")
+        events: List[Event] = self.event_bus.consume_latest_events(blueprint_execution.execution_id, instruction.conditions)
         if not events:
-            log.info(f"Could not find necessary events {condition.filter_events} in event_bus to execute outcome of this condition")
+            log.info(f"Could not find necessary events {instruction.conditions} in event_bus to execute outcome of this instruction")
             return
-        outcome_result = self._execute_outcome(condition.outcome, blueprint_execution.execution_context, events)
-        self.blueprint_execution_store.mark_condition_complete(blueprint_execution, condition, outcome_result)
+        outcome_result = self._execute_outcome(instruction.outcome, blueprint_execution.execution_context, events)
+        self.blueprint_execution_store.mark_instruction_complete(blueprint_execution, instruction, outcome_result)
         return outcome_result
 
-    def _execute_outcome(self, outcome: BlueprintConditionOutcome, execution_context: Dict, events: List[Event]):
+    def _execute_outcome(self, outcome: BlueprintInstructionOutcome, execution_context: Dict, events: List[Event]):
         log.info(f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
         adapter_result = outcome.adapter.adapt(events, execution_context)
         log.info(f"Adapter result - {adapter_result}")
@@ -264,5 +264,3 @@ def add_new_order_for_execution():
 
 def execute():
     pass
-
-# TODO: Event - what does it mean to have event definition and event class. Should i model it as event_name in the condition
