@@ -197,10 +197,9 @@ class BlueprintExecutionManager:
 class BlueprintExecutor:
     DEFAULT_POLL_TIME = 10
 
-    def __init__(self, blueprint_manager: BlueprintManager, blueprint_execution_store: BlueprintExecutionStore, event_bus: EventBus):
+    def __init__(self, blueprint_execution_store: BlueprintExecutionStore, event_bus: EventBus):
         self.blueprint_execution_store = blueprint_execution_store
         self.event_bus = event_bus
-        self.blueprint_manager = blueprint_manager
 
         self.worker_id = self._get_worker_id()
         self.iteration_count = 0
@@ -231,12 +230,12 @@ class BlueprintExecutor:
 
     def _process_condition(self, blueprint_execution: BlueprintExecution, condition: BlueprintCondition):
         log.info(f"Processing BlueprintCondition {condition}")
-        events = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
+        events: List[Event] = self.event_bus.consume_latest_events(blueprint_execution.execution_id, condition.events)
         if not events:
             log.info(f"Could not find necessary events {events} in event_bus to execute Outcome of this condition")
             return
         outcome_result = self._execute_outcome(condition.outcome, blueprint_execution.execution_context, events)
-        self.blueprint_execution_store.complete_condition(blueprint_execution, condition, outcome_result)
+        self.blueprint_execution_store.mark_condition_complete(blueprint_execution, condition, outcome_result)
         return outcome_result
 
     def _execute_outcome(self, outcome: BlueprintConditionOutcome, execution_context: Dict, events: List[Event]):
