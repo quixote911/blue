@@ -32,30 +32,28 @@ class BlueprintExecutionManager:
 
 class BlueprintExecutor:
     DEFAULT_POLL_TIME = 10
+    DEFAULT_WORKER_ID = "unnamed"
 
-
-    def __init__(self, execution_manager: BlueprintExecutionManager):
+    def __init__(self, execution_manager: BlueprintExecutionManager, worker_id=None):
         self.blueprint_execution_store: BlueprintExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
 
-        self.worker_id = self._get_worker_id()
+        self.worker_id = worker_id or self.DEFAULT_WORKER_ID
         self.iteration_count = 0
 
 
     def _get_worker_id(self):
         return "dummy_worker_id"
 
-    def _sleep(self):
-        if self.iteration_count != 0:
-            log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
-            time.sleep(self.DEFAULT_POLL_TIME)
-        self.iteration_count += 1
+    # def _sleep(self):
+    #     if self.iteration_count != 0:
+    #         log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
+    #         time.sleep(self.DEFAULT_POLL_TIME)
+    #     self.iteration_count += 1
 
     def run(self):
         log.info('Starting BlueprintExecutor')
         while True:  # TODO: Maybe parallel
-            self._sleep()
-
             blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process(self.worker_id)
             if not blueprint_execution:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
