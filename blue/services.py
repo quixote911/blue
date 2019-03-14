@@ -33,6 +33,7 @@ class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
     def __init__(self, config):
         super().__init__(config)
         self._stored_executions = []
+        self._in_flight_executions = []
 
     def store(self, blueprint_execution: BlueprintExecution):
         self._stored_executions.append(blueprint_execution)
@@ -41,7 +42,9 @@ class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
         return self._stored_executions
 
     def get_execution_to_process(self, worker_id) -> BlueprintExecution:
-        pass
+        execution_to_process = self._stored_executions.pop()
+        self._in_flight_executions.append(execution_to_process)
+        return execution_to_process
 
 
 class InMemoryEventBus(EventBus):
