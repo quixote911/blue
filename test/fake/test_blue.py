@@ -7,42 +7,16 @@ from blue.services import BlueprintExecutionStore, EventBus
 
 log = logging.getLogger(__name__)
 
-fixed_rate_order_blueprint_definition = {
-    "name": "fixed_rate_order_blueprint_definition",
-    "instructions": [
-        {
-            "conditions": ["new_order"],
-            "outcome": {
-                "action": "action_check_for_deposit",
-                "adapter": "adapter_check_deposit_when_new_order"
-            }
-        },
-        {
-            "conditions": ["deposit_status"],
-            "outcome": {
-                "action": "from_holding_branch",
-                "adapter": "adapter_from_holding_when_deposit_status"
-            }
-        },
-        {
-            "conditions": ["deposit_status"],
-            "outcome": {
-                "action": "to_holding_branch",
-                "adapter": "adapter_to_holding_branch_when_deposit_status"
-            }
-        }
-    ]
-}
-
-
 
 class CheckForDeposit(Action):
     def act(self, input):
         print("Action - CheckedForDeposit")
 
+
 class TransferToExchange(Action):
     def act(self, input):
         print("Action - CheckedForDeposit")
+
 
 class BasicAdapter(Adapter):
     def adapt(self, context, events):
@@ -52,7 +26,7 @@ class BasicAdapter(Adapter):
 blueprint_manager_config = {
     'namespace': {
         'action': {
-            'check_deposit':  CheckForDeposit(),
+            'check_deposit': CheckForDeposit(),
             'transfer_to_exchange': TransferToExchange()
         },
         'adapter': {
@@ -61,8 +35,33 @@ blueprint_manager_config = {
     }
 }
 
-def test_blueprint_manager_initalize():
-    blueprint_manager = BlueprintManager(blueprint_manager_config)
+test_blueprint_definition = {
+    "name": "test_blueprint_1",
+    "instructions": [
+        {
+            "conditions": ["new_order"],
+            "outcome": {
+                "action": "check_deposit",
+                "adapter": "basic_adapter"
+            }
+        },
+        {
+            "conditions": ["deposit_status"],
+            "outcome": {
+                "action": "transfer_to_exchange",
+                "adapter": "basic_adapter"
+            }
+        }
+    ]
+}
 
-def test_foo():
-    pass
+
+def test_blueprint_manager_initalize():
+    bm = BlueprintManager(blueprint_manager_config)
+    assert bm is not None
+
+
+def test_add_blueprint():
+    bm = BlueprintManager(blueprint_manager_config)
+    bm.add_blueprint(test_blueprint_definition)
+    assert test_blueprint_definition['name'] in bm.live_blueprints_by_name

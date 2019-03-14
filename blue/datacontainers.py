@@ -22,7 +22,7 @@ class BlueprintInstructionOutcome:
 class BlueprintInstruction:
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
-    status: Optional[str]
+    status: Optional[str] = None
     id_: str = field(default_factory=generate_random_id)
 
 
