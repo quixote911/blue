@@ -5,6 +5,7 @@ from typing import List, Dict
 
 from dataclasses import asdict
 
+from base import NoActionRequiredException
 from blue.blueprint import BlueprintManager
 from blue.services import BlueprintInstructionExecutionStore, EventBus
 from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint, Event, BlueprintExecution, BlueprintInstructionState
@@ -89,6 +90,9 @@ class BlueprintExecutor:
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.conditions}. Skipping.")
             return
-        outcome_result = self._execute_outcome(instruction_state.instruction.outcome, blueprint_execution.execution_context, events)
-        self.execution_store.mark_instruction_complete(blueprint_execution.execution_id, instruction_state)
-        return outcome_result
+        try:
+            action_result = self._execute_outcome(instruction_state.instruction.outcome, blueprint_execution.execution_context, events)
+        except NoActionRequiredException:
+            pass
+        else:
+            self.execution_store.mark_instruction_complete(instruction_state)

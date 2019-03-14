@@ -5,10 +5,15 @@ class BlueError(Exception):
     pass
 
 
+
 class Action(ABC):
     @abstractmethod
     def act(self, input):
         pass
+
+
+class NoActionRequiredException(BlueError):
+    pass
 
 
 class Adapter(ABC):
