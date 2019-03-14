@@ -6,7 +6,7 @@ from typing import List, Dict
 from dataclasses import asdict
 
 from blue.blueprint import BlueprintManager
-from blue.services import BlueprintExecutionStore, EventBus
+from blue.services import BlueprintInstructionExecutionStore, EventBus
 from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint, Event, BlueprintExecution, BlueprintInstructionState
 
 log = logging.getLogger(__name__)
@@ -14,9 +14,9 @@ log = logging.getLogger(__name__)
 
 class BlueprintExecutionManager:
 
-    def __init__(self, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
+    def __init__(self, event_bus: EventBus, execution_store: BlueprintInstructionExecutionStore):
         self.event_bus = event_bus
-        self.execution_store = blueprint_execution_store
+        self.execution_store = execution_store
 
     def start_execution(self, blueprint: Blueprint, boot_event: Event, execution_context: Dict):
         blueprint_execution_id = str(uuid.uuid4())
@@ -40,7 +40,7 @@ class BlueprintExecutor:
     DEFAULT_WORKER_ID = "unnamed"
 
     def __init__(self, execution_manager: BlueprintExecutionManager, worker_id=None, max_iteration_count=None):
-        self.blueprint_execution_store: BlueprintExecutionStore = execution_manager.execution_store
+        self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
 
         self.worker_id = worker_id or self.DEFAULT_WORKER_ID
@@ -51,9 +51,9 @@ class BlueprintExecutor:
         log.info('Starting BlueprintExecutor')
         while True:
             self.iteration_count += 1
-            blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process(self.worker_id)
+            blueprint_execution: BlueprintExecution = self.execution_store.get_execution_to_process(self.worker_id)
             if not blueprint_execution:
-                log.info("No BlueprintExecution found from blueprint_execution_store")
+                log.info("No BlueprintExecution found from execution_store")
                 continue
 
             instructions_to_process: List[BlueprintInstructionState] = [instr for instr in blueprint_execution.instructions_states if
@@ -90,5 +90,5 @@ class BlueprintExecutor:
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.conditions}. Skipping.")
             return
         outcome_result = self._execute_outcome(instruction_state.instruction.outcome, blueprint_execution.execution_context, events)
-        self.blueprint_execution_store.mark_instruction_complete(blueprint_execution.execution_id, instruction_state)
+        self.execution_store.mark_instruction_complete(blueprint_execution.execution_id, instruction_state)
         return outcome_result

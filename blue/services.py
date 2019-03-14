@@ -14,7 +14,7 @@ class BlueprintExecutionStoreError(BlueError):
     pass
 
 
-class BlueprintExecutionStore(ABC):
+class BlueprintInstructionExecutionStore(ABC):
     def __init__(self, config):
         pass
 
@@ -48,7 +48,7 @@ class EventBus:
         pass
 
 
-class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
+class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
 
     def __init__(self, config):
         super().__init__(config)

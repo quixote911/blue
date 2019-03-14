@@ -3,7 +3,7 @@ import logging
 from blue.base import Action, Adapter
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager, BlueprintExecutor
-from blue.services import BlueprintExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintExecutionStore
+from blue.services import BlueprintInstructionExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintInstructionExecutionStore
 from datacontainers import Event
 
 log = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ test_blueprint_definition = {
 
 def basic_initialize_execution_manager():
     event_bus = InMemoryEventBus(dict())
-    execution_store = InMemoryBlueprintExecutionStore(dict())
+    execution_store = InMemoryBlueprintInstructionExecutionStore(dict())
     bem = BlueprintExecutionManager(event_bus, execution_store)
 
     bm = BlueprintManager(blueprint_manager_config)

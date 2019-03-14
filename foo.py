@@ -3,7 +3,7 @@ import logging
 from blue.base import Event
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager
-from blue.services import BlueprintExecutionStore, EventBus
+from blue.services import BlueprintInstructionExecutionStore, EventBus
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def add_new_order_for_execution():
     blueprint_manager.add_blueprint(fixed_rate_order_blueprint_definition)
 
     event_bus = EventBus()
-    execution_store = BlueprintExecutionStore()
+    execution_store = BlueprintInstructionExecutionStore()
     execution_manager = BlueprintExecutionManager(blueprint_manager, event_bus, execution_store)
 
     new_order_event = Event()
