@@ -10,15 +10,37 @@ from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstructio
 log = logging.getLogger(__name__)
 
 
+
+class BlueprintExecutionManager:
+
+    def __init__(self, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
+        self.event_bus = event_bus
+        self.execution_store = blueprint_execution_store
+
+    def start_execution(self, blueprint: Blueprint, boot_event: Event, execution_context: Dict):
+
+        blueprint_execution_id = str(uuid.uuid4())
+        boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
+
+        blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)
+        self.execution_store.store(blueprint_execution)
+        self.event_bus.publish(boot_event)
+
+    def get_all_executions(self):
+        return self.execution_store.get_all()
+
+
 class BlueprintExecutor:
     DEFAULT_POLL_TIME = 10
 
-    def __init__(self, blueprint_execution_store: BlueprintExecutionStore, event_bus: EventBus):
-        self.blueprint_execution_store = blueprint_execution_store
-        self.event_bus = event_bus
+
+    def __init__(self, execution_manager: BlueprintExecutionManager):
+        self.blueprint_execution_store: BlueprintExecutionStore = execution_manager.execution_store
+        self.event_bus: EventBus = execution_manager.event_bus
 
         self.worker_id = self._get_worker_id()
         self.iteration_count = 0
+
 
     def _get_worker_id(self):
         return "dummy_worker_id"
@@ -62,21 +84,3 @@ class BlueprintExecutor:
         log.info(f"Action result - {action_result}")
         return action_result
 
-
-class BlueprintExecutionManager:
-
-    def __init__(self, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
-        self.event_bus = event_bus
-        self.execution_store = blueprint_execution_store
-
-    def start_execution(self, blueprint: Blueprint, boot_event: Event, execution_context: Dict):
-
-        blueprint_execution_id = str(uuid.uuid4())
-        boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
-
-        blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)
-        self.execution_store.store(blueprint_execution)
-        self.event_bus.publish(boot_event)
-
-    def get_all_executions(self):
-        return self.execution_store.get_all()

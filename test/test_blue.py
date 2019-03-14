@@ -2,7 +2,7 @@ import logging
 
 from blue.base import Action, Adapter
 from blue.blueprint import BlueprintManager
-from blue.execution import BlueprintExecutionManager
+from blue.execution import BlueprintExecutionManager, BlueprintExecutor
 from blue.services import BlueprintExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintExecutionStore
 from datacontainers import Event
 
@@ -91,6 +91,7 @@ def test_blueprint_execution_manager_start_execution():
 
 def test_blueprint_executor():
     bem = basic_initialize_execution_manager()
+    BlueprintExecutor(bem)
 
 
 
