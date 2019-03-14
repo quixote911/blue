@@ -31,6 +31,10 @@ class BlueprintInstructionExecutionStore(ABC):
     def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
         pass
 
+    @abstractmethod
+    def get_blueprint_from_id(self, blueprint_execution_id) -> BlueprintExecution:
+        pass
+
 class EventBus:
     def __init__(self, config):
         pass
@@ -67,6 +71,9 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
 
     def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
         instruction_state.status = state
+
+    def get_blueprint_from_id(self, blueprint_execution_id) -> BlueprintExecution:
+        return self._stored_blueprint_executions.get(blueprint_execution_id)
 
 
 class InMemoryEventBus(EventBus):

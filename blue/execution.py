@@ -46,17 +46,12 @@ class BlueprintExecutor:
         log.info('Starting BlueprintExecutor')
         while True:
             self.iteration_count += 1
-            blueprint_execution: BlueprintExecution = self.execution_store.get_instruction_to_process(self.worker_id)
-            if not blueprint_execution:
-                log.info("No BlueprintExecution found from execution_store")
+            instruction_state: BlueprintInstructionState = self.execution_store.get_instruction_to_process(self.worker_id)
+            if not instruction_state:
+                log.info("No Blueprint Exectution Instruction State found from execution_store")
                 continue
+            self._process_instruction(instruction_state)
 
-            instructions_to_process: List[BlueprintInstructionState] = [instr for instr in blueprint_execution.instructions_states if
-                                                                        instr.status != 'PROCESSED']
-
-            log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. instructions_to_process={instructions_to_process}")
-            for instruction in instructions_to_process:
-                self._process_instruction(blueprint_execution, instruction)
             if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
                 log.info(f"Completed Max iterations. Exiting.")
                 break
@@ -70,22 +65,23 @@ class BlueprintExecutor:
             events.append(event)
         return events
 
-    def _execute_outcome(self, outcome: BlueprintInstructionOutcome, execution_context: Dict, events: List[Event]):
-        log.info(f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
-        adapter_result = outcome.adapter.adapt(events, execution_context)
+    def _execute_outcome(self, outcome: BlueprintInstructionOutcome, blueprint_execution_id: str, events: List[Event]):
+        blueprint_execution: BlueprintExecution = self.execution_store.get_blueprint_from_id(blueprint_execution_id)
+        log.info(f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {blueprint_execution.execution_context}")
+        adapter_result = outcome.adapter.adapt(events, blueprint_execution.execution_context)
         log.info(f"Adapter result - {adapter_result}")
         action_result = outcome.action.act(adapter_result)
         log.info(f"Action result - {action_result}")
         return action_result
 
-    def _process_instruction(self, blueprint_execution: BlueprintExecution, instruction_state: BlueprintInstructionState):
+    def _process_instruction(self, instruction_state: BlueprintInstructionState):
         log.info(f"Processing BlueprintInstruction {instruction_state}")
         events = self._check_conditions(instruction_state.instruction.conditions)
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.conditions}. Skipping.")
             return
         try:
-            action_result = self._execute_outcome(instruction_state.instruction.outcome, blueprint_execution.execution_context, events)
+            action_result = self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)
         except NoActionRequiredException:
             log.info("Received NoActionRequiredException")
             self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.IDLE)
