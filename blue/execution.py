@@ -77,3 +77,6 @@ class BlueprintExecutionManager:
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)
         self.execution_store.store(blueprint_execution)
         self.event_bus.publish(boot_event)
+
+    def get_all_executions(self):
+        return self.execution_store.get_all()

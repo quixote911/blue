@@ -86,11 +86,12 @@ def test_add_blueprint():
 def test_blueprint_execution_manager_start_execution():
     bem = basic_initialize_execution_manager()
     assert len(bem.execution_store.get_all()) == 1
-    assert bem.execution_store.get_all()[0].blueprint.name == 'test_blueprint_1'
+    assert bem.get_all_executions()[0].blueprint.name == 'test_blueprint_1'
 
 
-# def test_blueprint_executor():
-#     bem = basic_initialize_execution_manager()
+def test_blueprint_executor():
+    bem = basic_initialize_execution_manager()
+
 
 
 

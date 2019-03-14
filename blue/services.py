@@ -15,6 +15,9 @@ class BlueprintExecutionStore(ABC):
     def get_execution_to_process(self, worker_id) -> BlueprintExecution:
         pass
 
+    @abstractmethod
+    def get_all(self):
+        pass
 
 class EventBus:
     def __init__(self, config):
