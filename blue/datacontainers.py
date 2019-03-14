@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from dataclasses import dataclass, field
 
@@ -23,6 +23,7 @@ class BlueprintInstruction:
     id_: str = field(default_factory=generate_random_id)
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
+    status: Optional[str]
 
 
 @dataclass

@@ -39,7 +39,7 @@ class BlueprintExecutor:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
                 continue
 
-            instructions_to_process = [c for c in blueprint_execution.blueprint.instructions if c.status != 'PROCESSED']
+            instructions_to_process = [instr for instr in blueprint_execution.blueprint.instructions if instr.status != 'PROCESSED']
             log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. instructions_to_process={instructions_to_process}")
             for instruction in instructions_to_process:  # TODO: parallel
                 self._process_instruction(blueprint_execution, instruction)
