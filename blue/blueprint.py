@@ -1,5 +1,7 @@
 from typing import Dict
 
+from dataclasses import asdict
+
 from blue.base import BlueError
 from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint
 
@@ -9,7 +11,7 @@ class InvalidBlueprintDefinition(BlueError):
 
 
 class BlueprintManager:
-    instruction_outcome_attribute_names = dict(BlueprintInstructionOutcome).keys()
+    instruction_outcome_attribute_names = ['action', 'adapter']
 
     def __init__(self, config):
         BlueprintManager.validate_config(config)

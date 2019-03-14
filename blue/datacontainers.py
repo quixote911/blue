@@ -20,10 +20,10 @@ class BlueprintInstructionOutcome:
 
 @dataclass
 class BlueprintInstruction:
-    id_: str = field(default_factory=generate_random_id)
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
     status: Optional[str]
+    id_: str = field(default_factory=generate_random_id)
 
 
 @dataclass
