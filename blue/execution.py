@@ -1,14 +1,11 @@
 import logging
-import time
 import uuid
 from typing import List, Dict
 
-from dataclasses import asdict
-
 from base import NoActionRequiredException
-from blue.blueprint import BlueprintManager
+from blue.datacontainers import BlueprintInstructionOutcome, Blueprint, Event, BlueprintExecution, BlueprintInstructionState, \
+    InstructionStatus
 from blue.services import BlueprintInstructionExecutionStore, EventBus
-from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint, Event, BlueprintExecution, BlueprintInstructionState
 
 log = logging.getLogger(__name__)
 
@@ -31,9 +28,6 @@ class BlueprintExecutionManager:
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint, instructions_states)
         self.execution_store.store(blueprint_execution)
         self.event_bus.publish(boot_event)
-
-    def get_all_executions(self):
-        return self.execution_store.get_all()
 
 
 class BlueprintExecutor:
@@ -93,6 +87,10 @@ class BlueprintExecutor:
         try:
             action_result = self._execute_outcome(instruction_state.instruction.outcome, blueprint_execution.execution_context, events)
         except NoActionRequiredException:
-            pass
+            log.info("Received NoActionRequiredException")
+            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.IDLE)
+        except Exception:
+            log.exception("Unexpected Exception")
+            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.FAILED)
         else:
-            self.execution_store.mark_instruction_complete(instruction_state)
+            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.COMPLETE)

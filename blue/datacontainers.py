@@ -1,10 +1,10 @@
+from enum import auto
 from typing import List, Dict, Optional
 
 from dataclasses import dataclass, field
 
 from blue.base import Action, Adapter
-from blue.util import generate_random_id
-
+from blue.util import generate_random_id, AutoNameEnum
 
 
 @dataclass
@@ -24,11 +24,17 @@ class BlueprintInstruction:
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
 
+class InstructionStatus(AutoNameEnum):
+    IDLE = auto()
+    PROCESSING = auto()
+    COMPLETE = auto()
+    FAILED = auto()
+
 @dataclass
 class BlueprintInstructionState:
     instruction: BlueprintInstruction
     blueprint_execution_id: str
-    status: Optional[str] = None
+    status: InstructionStatus = InstructionStatus.IDLE
     id_: str = field(default_factory=generate_random_id)
 
 @dataclass
