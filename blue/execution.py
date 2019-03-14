@@ -2,7 +2,9 @@ import logging
 import uuid
 from typing import List, Dict
 
-from base import BlueError
+from blue.base import BlueError
+
+from blue.base import Action, Adapter
 from blue.datacontainers import BlueprintInstructionOutcome, Blueprint, Event, BlueprintExecution, BlueprintInstructionState, \
     InstructionStatus
 from blue.services import BlueprintInstructionExecutionStore, EventBus
@@ -73,9 +75,13 @@ class BlueprintExecutor:
         blueprint_execution: BlueprintExecution = self.execution_store.get_blueprint_from_id(blueprint_execution_id)
         log.info(
             f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {blueprint_execution.execution_context}")
-        adapter_result = outcome.adapter.adapt(events, blueprint_execution.execution_context)
+
+        adapter_instance: Adapter = outcome.adapter()
+        adapter_result = adapter_instance.adapt(events, blueprint_execution.execution_context)
         log.info(f"Adapter result - {adapter_result}")
-        action_result = outcome.action.act(adapter_result)
+
+        action_instance: Action = outcome.action(self.event_bus)
+        action_result = action_instance.act(adapter_result)
         log.info(f"Action result - {action_result}")
         return action_result
 

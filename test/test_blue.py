@@ -27,11 +27,11 @@ class BasicAdapter(Adapter):
 blueprint_manager_config = {
     'namespace': {
         'action': {
-            'check_deposit': CheckForDeposit(),
-            'transfer_to_exchange': TransferToExchange()
+            'check_deposit': CheckForDeposit,
+            'transfer_to_exchange': TransferToExchange
         },
         'adapter': {
-            'basic_adapter': BasicAdapter()
+            'basic_adapter': BasicAdapter
         }
     }
 }

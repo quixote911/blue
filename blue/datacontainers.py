@@ -1,5 +1,5 @@
 from enum import auto
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Type
 
 from dataclasses import dataclass, field
 
@@ -15,8 +15,8 @@ class Event:
 
 @dataclass
 class BlueprintInstructionOutcome:
-    action: Action
-    adapter: Adapter
+    action: Type[Action]
+    adapter: Type[Adapter]
 
 
 @dataclass
