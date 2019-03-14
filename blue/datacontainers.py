@@ -9,7 +9,7 @@ from blue.util import generate_random_id
 
 @dataclass
 class Event:
-    name: str
+    topic: str
     metadata: Optional[Dict] = field(default_factory=dict)
     body: Optional[Dict] = field(default_factory=dict)
 

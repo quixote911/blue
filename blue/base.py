@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
+
 class BlueError(Exception):
     pass
-
 
 
 class Action(ABC):

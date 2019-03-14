@@ -27,7 +27,9 @@ class EventBus:
     def publish(self, event: Event):
         pass
 
-
+    @abstractmethod
+    def get_event(self, topic):
+        pass
 
 class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
     def __init__(self, config):
@@ -49,9 +51,13 @@ class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
 
 class InMemoryEventBus(EventBus):
 
+
     def __init__(self, config):
         super().__init__(config)
-        self.events_by_name = {}
+        self.event_by_topic = {}
 
     def publish(self, event):
-        self.events_by_name[event.name] = event
+        self.event_by_topic[event.topic] = event
+
+    def get_event(self, topic):
+        return self.event_by_topic.get(topic)
