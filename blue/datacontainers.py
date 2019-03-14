@@ -23,9 +23,12 @@ class BlueprintInstructionOutcome:
 class BlueprintInstruction:
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
+
+@dataclass
+class BlueprintInstructionState:
+    instruction: BlueprintInstruction
     status: Optional[str] = None
     id_: str = field(default_factory=generate_random_id)
-
 
 @dataclass
 class Blueprint:
@@ -38,3 +41,4 @@ class BlueprintExecution:
     execution_id: str
     execution_context: Dict
     blueprint: Blueprint
+    instructions_states: List[BlueprintInstructionState]
