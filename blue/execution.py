@@ -10,7 +10,6 @@ from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstructio
 log = logging.getLogger(__name__)
 
 
-
 class BlueprintExecutionManager:
 
     def __init__(self, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
@@ -18,7 +17,6 @@ class BlueprintExecutionManager:
         self.execution_store = blueprint_execution_store
 
     def start_execution(self, blueprint: Blueprint, boot_event: Event, execution_context: Dict):
-
         blueprint_execution_id = str(uuid.uuid4())
         boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
 
@@ -31,29 +29,24 @@ class BlueprintExecutionManager:
 
 
 class BlueprintExecutor:
-    DEFAULT_POLL_TIME = 10
+    # DEFAULT_POLL_TIME = 10
     DEFAULT_WORKER_ID = "unnamed"
 
-    def __init__(self, execution_manager: BlueprintExecutionManager, worker_id=None):
+    def __init__(self, execution_manager: BlueprintExecutionManager, worker_id=None, max_iteration_count=None):
         self.blueprint_execution_store: BlueprintExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
 
         self.worker_id = worker_id or self.DEFAULT_WORKER_ID
         self.iteration_count = 0
-
+        self.max_iteration_count = max_iteration_count
 
     def _get_worker_id(self):
         return "dummy_worker_id"
 
-    # def _sleep(self):
-    #     if self.iteration_count != 0:
-    #         log.info(f"Sleeping for {self.DEFAULT_POLL_TIME} seconds")
-    #         time.sleep(self.DEFAULT_POLL_TIME)
-    #     self.iteration_count += 1
-
     def run(self):
         log.info('Starting BlueprintExecutor')
         while True:  # TODO: Maybe parallel
+            self.iteration_count += 1
             blueprint_execution: BlueprintExecution = self.blueprint_execution_store.get_execution_to_process(self.worker_id)
             if not blueprint_execution:
                 log.info("No BlueprintExecution found from blueprint_execution_store")
@@ -63,6 +56,9 @@ class BlueprintExecutor:
             log.info(f"Processing BlueprintExecution {blueprint_execution.execution_id}. instructions_to_process={instructions_to_process}")
             for instruction in instructions_to_process:  # TODO: parallel
                 self._process_instruction(blueprint_execution, instruction)
+            if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
+                log.info(f"Completed Max iterations. Exiting.")
+                break
 
     def _process_instruction(self, blueprint_execution: BlueprintExecution, instruction: BlueprintInstruction):
         log.info(f"Processing BlueprintInstruction {instruction}")
@@ -81,4 +77,3 @@ class BlueprintExecutor:
         action_result = outcome.action.act(adapter_result)
         log.info(f"Action result - {action_result}")
         return action_result
-

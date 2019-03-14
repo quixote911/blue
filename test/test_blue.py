@@ -91,7 +91,8 @@ def test_blueprint_execution_manager_start_execution():
 
 def test_blueprint_executor():
     bem = basic_initialize_execution_manager()
-    bex = BlueprintExecutor(bem)
+    bex = BlueprintExecutor(bem, 'worker-testrunner')
+    bex.run()
 
 
 
