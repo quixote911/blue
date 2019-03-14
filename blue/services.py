@@ -34,6 +34,9 @@ class InMemoryBlueprintExecutionStore(BlueprintExecutionStore):
     def store(self, blueprint_execution: BlueprintExecution):
         self._stored_executions.append(blueprint_execution)
 
+    def get_all(self):
+        return self._stored_executions
+
     def get_execution_to_process(self, worker_id) -> BlueprintExecution:
         pass
 
@@ -45,4 +48,4 @@ class InMemoryEventBus(EventBus):
         self.events_by_name = {}
 
     def publish(self, event):
-        self.events_by_name[event.metadata['name']] = event
+        self.events_by_name[event.name] = event
