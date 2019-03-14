@@ -2,12 +2,10 @@ import logging
 import uuid
 from typing import List, Dict
 
-from blue.base import BlueError
+from blue.base import BlueError, BlueprintInstructionExecutionStore, EventBus, Event, BlueprintInstructionOutcome, InstructionStatus, BlueprintInstructionState, \
+    Blueprint, BlueprintExecution
 
 from blue.base import Action, Adapter
-from blue.datacontainers import BlueprintInstructionOutcome, Blueprint, Event, BlueprintExecution, BlueprintInstructionState, \
-    InstructionStatus
-from blue.services import BlueprintInstructionExecutionStore, EventBus
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +87,7 @@ class BlueprintExecutor:
         log.info(f"Processing BlueprintInstruction {instruction_state}")
         events = self._check_conditions(instruction_state.instruction.conditions)
         if len(events) != len(instruction_state.instruction.conditions):
-            log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.conditions}. Skipping.")
+            log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")
             return
         try:
             action_result = self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)

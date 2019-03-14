@@ -1,10 +1,9 @@
 import logging
 
-from blue.base import Action, Adapter
+from blue.base import Action, Adapter, Event
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager, BlueprintExecutor
-from blue.services import BlueprintInstructionExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintInstructionExecutionStore
-from blue.datacontainers import Event
+from blue.impl import InMemoryEventBus, InMemoryBlueprintInstructionExecutionStore
 
 log = logging.getLogger(__name__)
 

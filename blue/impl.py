@@ -1,51 +1,9 @@
 import logging
 import random
-from abc import ABC, abstractmethod
-from enum import auto
-from typing import List
 
-from blue.base import BlueError
-from blue.datacontainers import BlueprintExecution, Event, BlueprintInstructionState, InstructionStatus
-from blue.util import AutoNameEnum
+from blue.base import BlueprintInstructionExecutionStore, EventBus, InstructionStatus, BlueprintInstructionState, BlueprintExecution
 
 log = logging.getLogger(__name__)
-
-
-class BlueprintExecutionStoreError(BlueError):
-    pass
-
-
-class BlueprintInstructionExecutionStore(ABC):
-    def __init__(self, config):
-        pass
-
-    @abstractmethod
-    def store(self, blueprint_execution: BlueprintExecution):
-        pass
-
-    @abstractmethod
-    def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
-        pass
-
-    @abstractmethod
-    def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
-        pass
-
-    @abstractmethod
-    def get_blueprint_from_id(self, blueprint_execution_id) -> BlueprintExecution:
-        pass
-
-class EventBus:
-    def __init__(self, config):
-        pass
-
-    @abstractmethod
-    def publish(self, event: Event):
-        pass
-
-    @abstractmethod
-    def get_event(self, topic):
-        pass
 
 
 class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):

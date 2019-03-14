@@ -2,8 +2,7 @@ from typing import Dict
 
 from dataclasses import asdict
 
-from blue.base import BlueError
-from blue.datacontainers import BlueprintInstructionOutcome, BlueprintInstruction, Blueprint
+from blue.base import BlueError, BlueprintInstructionOutcome, BlueprintInstruction, Blueprint
 
 
 class InvalidBlueprintDefinition(BlueError):
