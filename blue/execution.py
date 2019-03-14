@@ -24,7 +24,7 @@ class BlueprintExecutionManager:
 
         instructions_states = []
         for instruction in blueprint.instructions:
-            instruction_state = BlueprintInstructionState(instruction)
+            instruction_state = BlueprintInstructionState(instruction, blueprint_execution_id)
             instructions_states.append(instruction_state)
 
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint, instructions_states)
@@ -51,7 +51,7 @@ class BlueprintExecutor:
         log.info('Starting BlueprintExecutor')
         while True:
             self.iteration_count += 1
-            blueprint_execution: BlueprintExecution = self.execution_store.get_execution_to_process(self.worker_id)
+            blueprint_execution: BlueprintExecution = self.execution_store.get_instruction_to_process(self.worker_id)
             if not blueprint_execution:
                 log.info("No BlueprintExecution found from execution_store")
                 continue

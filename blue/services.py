@@ -1,4 +1,5 @@
 import logging
+import random
 from abc import ABC, abstractmethod
 from enum import auto
 from typing import List
@@ -23,11 +24,11 @@ class BlueprintInstructionExecutionStore(ABC):
         pass
 
     @abstractmethod
-    def get_execution_to_process(self, worker_id) -> BlueprintExecution:
+    def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
         pass
 
     @abstractmethod
-    def mark_instruction_complete(self, blueprint_execution_id: str, instruction_state: BlueprintInstructionState):
+    def mark_instruction_complete(self, instruction_state: BlueprintInstructionState):
         pass
 
     @abstractmethod
@@ -52,30 +53,25 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
 
     def __init__(self, config):
         super().__init__(config)
-        self._stored_executions = {}
-        self._in_flight_executions = []
+        self._stored_blueprint_executions = {}
+        self._stored_instruction_states = {}
+
+    def _store_instruction_state(self, instruction_state: BlueprintInstructionState):
+        self._stored_instruction_states[instruction_state.id_] = instruction_state
 
     def store(self, blueprint_execution: BlueprintExecution):
-        self._stored_executions[blueprint_execution.execution_id] = dict(blueprint_execution=blueprint_execution, in_flight=False)
+        self._stored_blueprint_executions[blueprint_execution.execution_id] = blueprint_execution
+        for each in blueprint_execution.instructions_states:
+            self._store_instruction_state(each)
 
-    def get_all(self):
-        return [x['blueprint_execution'] for x in self._stored_executions.values()]
+    def get_instruction_to_process(self, worker_id) -> BlueprintExecution:
+        instruction_id = random.choice(list(self._stored_instruction_states.keys()))
+        instruction_state = self._stored_instruction_states[instruction_id]
+        instruction_state.status = 'PROCESSING'
+        return instruction_state
 
-    def get_execution_to_process(self, worker_id) -> BlueprintExecution:
-        execution_to_process = self._stored_executions.pop()
-        self._in_flight_executions.append(execution_to_process)
-        return execution_to_process
-
-    def mark_instruction_complete(self, blueprint_execution_id: str, instruction_state: BlueprintInstructionState):
-        data = self._stored_executions.get(blueprint_execution_id)
-        if not data:
-            raise BlueprintExecutionStoreError(f"No such Blueprint found with blueprint_execution_id {blueprint_execution_id}")
-        if not data['in_flight']:
-            raise BlueprintExecutionStoreError(
-                f"Inconcsistent state. Cannot mark instruction {instruction_state.id_} complete when BlueprintExecution {blueprint_execution_id} is not in flight")
-
-
-        relevant_instruction_state = _get_relevant_instruction_states(data['blueprint_execution'].instructions_states)
+    def mark_instruction_complete(self, instruction_state: BlueprintInstructionState):
+        instruction_state.status = 'COMPLETE'
 
 
 

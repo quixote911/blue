@@ -27,6 +27,7 @@ class BlueprintInstruction:
 @dataclass
 class BlueprintInstructionState:
     instruction: BlueprintInstruction
+    blueprint_execution_id: str
     status: Optional[str] = None
     id_: str = field(default_factory=generate_random_id)
 
