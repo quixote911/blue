@@ -2,12 +2,16 @@ import logging
 import uuid
 from typing import List, Dict
 
-from base import NoActionRequiredException
+from base import BlueError
 from blue.datacontainers import BlueprintInstructionOutcome, Blueprint, Event, BlueprintExecution, BlueprintInstructionState, \
     InstructionStatus
 from blue.services import BlueprintInstructionExecutionStore, EventBus
 
 log = logging.getLogger(__name__)
+
+
+class NoActionRequiredException(BlueError):
+    pass
 
 
 class BlueprintExecutionManager:
@@ -67,7 +71,8 @@ class BlueprintExecutor:
 
     def _execute_outcome(self, outcome: BlueprintInstructionOutcome, blueprint_execution_id: str, events: List[Event]):
         blueprint_execution: BlueprintExecution = self.execution_store.get_blueprint_from_id(blueprint_execution_id)
-        log.info(f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {blueprint_execution.execution_context}")
+        log.info(
+            f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {blueprint_execution.execution_context}")
         adapter_result = outcome.adapter.adapt(events, blueprint_execution.execution_context)
         log.info(f"Adapter result - {adapter_result}")
         action_result = outcome.action.act(adapter_result)
