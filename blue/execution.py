@@ -65,19 +65,13 @@ class BlueprintExecutor:
 
 class BlueprintExecutionManager:
 
-    def __init__(self, blueprint_manager: BlueprintManager, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
-        self.manager = blueprint_manager
+    def __init__(self, event_bus: EventBus, blueprint_execution_store: BlueprintExecutionStore):
         self.event_bus = event_bus
         self.execution_store = blueprint_execution_store
 
-    def _select_blueprint(self, execution_context: Dict) -> Blueprint:
-        blueprint_name = "fixed_rate_order_blueprint"  # hardcoding for now
-        return self.manager.live_blueprints_by_name[blueprint_name]
+    def start_execution(self, blueprint: Blueprint, boot_event: Event, execution_context: Dict):
 
-    def start_execution(self, boot_event: Event, execution_context: Dict):
-        blueprint = self._select_blueprint(execution_context)
-
-        blueprint_execution_id = uuid.uuid4()
+        blueprint_execution_id = str(uuid.uuid4())
         boot_event.metadata['blueprint_execution_id'] = blueprint_execution_id
 
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint)

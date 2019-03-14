@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 class BlueError(Exception):
     pass
 
-class Event():
-    pass
 
 
 class Action(ABC):

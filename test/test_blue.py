@@ -1,9 +1,10 @@
 import logging
 
-from blue.base import Event, Action, Adapter
+from blue.base import Action, Adapter
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager
-from blue.services import BlueprintExecutionStore, EventBus
+from blue.services import BlueprintExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintExecutionStore
+from datacontainers import Event
 
 log = logging.getLogger(__name__)
 
@@ -65,3 +66,18 @@ def test_add_blueprint():
     bm = BlueprintManager(blueprint_manager_config)
     bm.add_blueprint(test_blueprint_definition)
     assert test_blueprint_definition['name'] in bm.live_blueprints_by_name
+
+
+
+def test_blueprint_execution_manager_start_execution():
+    event_bus = InMemoryEventBus(dict())
+    execution_store = InMemoryBlueprintExecutionStore(dict())
+    bem = BlueprintExecutionManager(event_bus, execution_store)
+
+    bm = BlueprintManager(blueprint_manager_config)
+    bm.add_blueprint(test_blueprint_definition)
+    blueprint_to_execute = bm.live_blueprints_by_name['test_blueprint_1']
+
+    boot_event = Event('new_order', )
+    execution_context = {'order_id': 'ABCASD123123', 'is_express': False, 'is_fixed_rate': True}
+    bem.start_execution(blueprint_to_execute, boot_event, execution_context)
