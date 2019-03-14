@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
 
-from blue.services import EventBus
-
 
 class BlueError(Exception):
     pass
 
 
 class Action(ABC):
-    def __init__(self, event_bus: EventBus):
+    def __init__(self, event_bus):
         self.event_bus = event_bus
 
     @abstractmethod

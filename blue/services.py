@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 from enum import auto
 from typing import List
 
-from base import BlueError
+from blue.base import BlueError
 from blue.datacontainers import BlueprintExecution, Event, BlueprintInstructionState, InstructionStatus
-from util import AutoNameEnum
+from blue.util import AutoNameEnum
 
 log = logging.getLogger(__name__)
 

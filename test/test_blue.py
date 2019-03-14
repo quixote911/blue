@@ -4,7 +4,7 @@ from blue.base import Action, Adapter
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager, BlueprintExecutor
 from blue.services import BlueprintInstructionExecutionStore, EventBus, InMemoryEventBus, InMemoryBlueprintInstructionExecutionStore
-from datacontainers import Event
+from blue.datacontainers import Event
 
 log = logging.getLogger(__name__)
 
