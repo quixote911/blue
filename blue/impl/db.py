@@ -1,11 +1,12 @@
-from typing import Dict
+import json
+from typing import Dict, Optional
 
 import boto3
 from dataclasses import asdict
 from peewee import Model, CharField, Proxy
 from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
-from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus
+from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction
 from blue.util import blue_json_dumps, superjson
 
 database_proxy = Proxy()  # Create a proxy for our db.
@@ -38,8 +39,10 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
         database_proxy.initialize(self.db)
         self.sqs = boto3.client('sqs')
         self._migrations()
+        self.receipthandle_by_instructionstateid = dict()
 
     def remove_effects(self):
+        self.sqs.delete_queue(QueueUrl=self._queue_url)
         self.db.drop_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
 
     def rerun_migrations(self):
@@ -80,11 +83,33 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
             MessageBody=superjson(instruction_state)
         )
 
-    def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
-        pass
+    def _get_instruction_to_process(self, worker_id) -> Optional[BlueprintInstructionState]:
+        response = self.sqs.receive_message(QueueUrl=self._queue_url, MaxNumberOfMessages=1)
+        messages = response['Messages']
+        if not messages:
+            return
 
-    def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
-        pass
+        b = json.loads(messages[0]['Body'])
+        self.receipthandle_by_instructionstateid[b['id_']] = messages[0]['ReceiptHandle']
+        return BlueprintInstructionState(
+            instruction=BlueprintInstruction(**b['instruction']),
+            blueprint_execution_id=b['blueprint_execution_id'],
+            blueprint=None,
+            status=InstructionStatus(b['status']),
+            _id=b['id_']
+        )
+
+    def _remove_from_queue(self, instruction_state: BlueprintInstructionState):
+        self.sqs.delete_message(
+            QueueUrl=self._queue_url,
+            ReceiptHandle=self.receipthandle_by_instructionstateid[instruction_state._id]
+        )
+
+    def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
+        BlueprintInstructionStateModel.update(status=status.value).where(instruction_state_id=instruction_state.id_)
+        if instruction_state.status in InstructionStatus.IDLE:
+            return
+        self._remove_from_queue(instruction_state)
 
     def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
         model: BlueprintExecutionModel = BlueprintExecutionModel.select().where(BlueprintExecutionModel.execution_id == blueprint_execution_id).get()

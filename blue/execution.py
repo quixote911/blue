@@ -10,7 +10,7 @@ from blue.base import Action, Adapter
 log = logging.getLogger(__name__)
 
 
-class NoActionRequiredException(BlueError):
+class NoActionRequired(BlueError):
     pass
 
 
@@ -90,12 +90,12 @@ class BlueprintExecutor:
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")
             return
         try:
-            action_result = self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)
-        except NoActionRequiredException:
-            log.info("Received NoActionRequiredException")
-            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.IDLE)
+            self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)
+        except NoActionRequired:
+            log.info("Received NoActionRequired")
+            self.execution_store.requeue(instruction_state)
         except Exception:
             log.exception("Unexpected Exception")
-            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.FAILED)
+            self.execution_store.report_failure(instruction_state)
         else:
-            self.execution_store.set_status_for_instruction(instruction_state, InstructionStatus.COMPLETE)
+            self.execution_store.acknowledge_success(instruction_state)

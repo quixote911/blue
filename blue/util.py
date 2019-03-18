@@ -21,6 +21,8 @@ def _serialize_all(obj):
         return asdict(obj)
     if inspect.isclass(obj):
         return obj.__name__
+    if isinstance(obj, Enum):
+        return obj.value
     else:
         return str(obj)
 

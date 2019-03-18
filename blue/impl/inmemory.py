@@ -23,10 +23,10 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
     def get_instruction_to_process(self, worker_id) -> BlueprintExecution:
         instruction_id = random.choice(list(self._stored_instruction_states.keys()))
         instruction_state = self._stored_instruction_states[instruction_id]
-        self.set_status_for_instruction(instruction_state, InstructionStatus.PROCESSING)
+        self._set_status_for_instruction(instruction_state, InstructionStatus.PROCESSING)
         return instruction_state
 
-    def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
+    def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
         instruction_state.status = state
 
     def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:

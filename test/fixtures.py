@@ -1,3 +1,5 @@
+import random
+import string
 import uuid
 
 import pytest
@@ -7,6 +9,9 @@ from blue.base import BlueprintExecution, Blueprint, BlueprintInstruction, Bluep
 
 def initialize_fixtures():
     pass
+
+def get_random_string(N):
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(N))
 
 
 class CheckForDeposit(Action):
@@ -99,7 +104,7 @@ _data_sample_execution_store_config = {
         'password': 'postgres'
     },
     'sqs': {
-        'prefix': 'test'
+        'prefix': 'test_'
     }
 }
 
@@ -121,7 +126,7 @@ def _data_sample_blueprint_definition():
 
 @pytest.fixture
 def sample_instructions():
-    return _data_sample_instructions
+    return [_data_sample_instruction_1, _data_sample_instruction_2]
 
 
 @pytest.fixture

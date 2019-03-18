@@ -107,13 +107,26 @@ class BlueprintInstructionExecutionStore(ABC):
         for instr_state in blueprint_execution.instructions_states:
             self._store_instruction_state(instr_state)
 
+    def get_instruction_to_process(self, worker_id=None) -> Optional[BlueprintInstructionState]:
+        instruction_state = self._get_instruction_to_process(worker_id)
+        self._set_status_for_instruction(instruction_state, InstructionStatus.PROCESSING)
+        return instruction_state
+
+    def acknowledge_success(self, instruction_state: BlueprintInstructionState):
+        self._set_status_for_instruction(instruction_state, InstructionStatus.COMPLETE)
+
+    def requeue(self, instruction_state: BlueprintInstructionState):
+        self._set_status_for_instruction(instruction_state, InstructionStatus.IDLE)
+
+    def report_failure(self, instruction_state: BlueprintInstructionState):
+        self._set_status_for_instruction(instruction_state, InstructionStatus.FAILED)
 
     @abstractmethod
-    def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
+    def _get_instruction_to_process(self, worker_id) -> Optional[BlueprintInstructionState]:
         pass
 
     @abstractmethod
-    def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
+    def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
         pass
 
     @abstractmethod
