@@ -6,7 +6,7 @@ from peewee import Model, CharField, Proxy
 from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
 from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus
-from blue.util import blue_json_dumps
+from blue.util import blue_json_dumps, superjson
 
 database_proxy = Proxy()  # Create a proxy for our db.
 
@@ -41,6 +41,7 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
 
     def remove_effects(self):
         self.db.drop_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
+
     def rerun_migrations(self):
         self._migrations()
 
@@ -53,26 +54,31 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
             response = self.sqs.list_queues()
             for url in response.get('QueueUrls', []):
                 if queue_name in url:
+                    self._queue_url = url
                     return True
                 return False
 
         queue_name = self._get_queue_name()
         self.db.create_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
         if not does_queue_exist(queue_name):
-            self.sqs.create_queue(QueueName=queue_name)
+            response = self.sqs.create_queue(QueueName=queue_name)
+            self._queue_url = response['QueueUrl']
 
     def _store_blueprint_execution(self, blueprint_execution: BlueprintExecution):
         bem = BlueprintExecutionModel(execution_id=blueprint_execution.execution_id, execution_context=blueprint_execution.execution_context,
                                       blueprint=asdict(blueprint_execution.blueprint))
-        # self.sqs.
         bem.save()
 
     def _store_instruction_state(self, instruction_state: BlueprintInstructionState):
         instruction_definition = asdict(instruction_state.instruction)
         instr_state_model = BlueprintInstructionStateModel(instruction_state_id=instruction_state.id_,
                                                            blueprint_execution_id=instruction_state.blueprint_execution_id, instruction=instruction_definition,
-                                                           status='foo')
+                                                           status=instruction_state.status.value)
         instr_state_model.save()
+        self.sqs.send_message(
+            QueueUrl=self._queue_url,
+            MessageBody=superjson(instruction_state)
+        )
 
     def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
         pass

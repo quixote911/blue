@@ -5,10 +5,24 @@ import uuid
 from enum import Enum
 from json import JSONEncoder
 
+from dataclasses import is_dataclass, asdict
 
 
 def generate_random_id():
     return str(uuid.uuid4())
+
+
+def superjson(obj) -> str:
+    return json.dumps(obj, default=_serialize_all)
+
+
+def _serialize_all(obj):
+    if is_dataclass(obj):
+        return asdict(obj)
+    if inspect.isclass(obj):
+        return obj.__name__
+    else:
+        return str(obj)
 
 
 class AutoNameEnum(Enum):
@@ -25,6 +39,7 @@ class BlueEncoder(JSONEncoder):
         if inspect.isclass(obj):
             return obj.__name__
         return json.JSONEncoder.default(self, obj)
+
 
 # >>> class ComplexEncoder(json.JSONEncoder):
 #     ...     def default(self, obj):
