@@ -70,12 +70,12 @@ class BlueprintExecutor:
         return events
 
     def _execute_outcome(self, outcome: BlueprintInstructionOutcome, blueprint_execution_id: str, events: List[Event]):
-        blueprint_execution: BlueprintExecution = self.execution_store.get_blueprint_from_id(blueprint_execution_id)
+        execution_context = self.execution_store.get_execution_context_from_id(blueprint_execution_id)
         log.info(
-            f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {blueprint_execution.execution_context}")
+            f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
 
         adapter_instance: Adapter = outcome.adapter()
-        adapter_result = adapter_instance.adapt(events, blueprint_execution.execution_context)
+        adapter_result = adapter_instance.adapt(events, execution_context)
         log.info(f"Adapter result - {adapter_result}")
 
         action_instance: Action = outcome.action(self.event_bus)

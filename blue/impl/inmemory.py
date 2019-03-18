@@ -1,5 +1,6 @@
 import logging
 import random
+from typing import Dict
 
 from blue.base import BlueprintInstructionExecutionStore, EventBus, InstructionStatus, BlueprintInstructionState, BlueprintExecution
 
@@ -13,13 +14,11 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
         self._stored_blueprint_executions = {}
         self._stored_instruction_states = {}
 
+    def _store_blueprint_execution(self, blueprint_execution: BlueprintExecution):
+        self._stored_blueprint_executions[blueprint_execution.execution_id] = blueprint_execution
+
     def _store_instruction_state(self, instruction_state: BlueprintInstructionState):
         self._stored_instruction_states[instruction_state.id_] = instruction_state
-
-    def store(self, blueprint_execution: BlueprintExecution):
-        self._stored_blueprint_executions[blueprint_execution.execution_id] = blueprint_execution
-        for each in blueprint_execution.instructions_states:
-            self._store_instruction_state(each)
 
     def get_instruction_to_process(self, worker_id) -> BlueprintExecution:
         instruction_id = random.choice(list(self._stored_instruction_states.keys()))
@@ -30,8 +29,8 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
     def set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
         instruction_state.status = state
 
-    def get_blueprint_from_id(self, blueprint_execution_id) -> BlueprintExecution:
-        return self._stored_blueprint_executions.get(blueprint_execution_id)
+    def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
+        return self._stored_blueprint_executions.get(blueprint_execution_id).execution_context
 
 
 class InMemoryEventBus(EventBus):

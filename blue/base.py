@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from enum import auto
 from typing import Optional, Dict, Type, List
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from blue.util import AutoNameEnum, generate_random_id
 
 
@@ -95,8 +95,18 @@ class BlueprintInstructionExecutionStore(ABC):
         pass
 
     @abstractmethod
-    def store(self, blueprint_execution: BlueprintExecution):
+    def _store_blueprint_execution(self, blueprint_execution: BlueprintExecution):
         pass
+
+    @abstractmethod
+    def _store_instruction_state(self, instr_state: BlueprintInstructionState):
+        pass
+
+    def store(self, blueprint_execution: BlueprintExecution):
+        self._store_blueprint_execution(blueprint_execution)
+        for instr_state in blueprint_execution.instructions_states:
+            self._store_instruction_state(instr_state)
+
 
     @abstractmethod
     def get_instruction_to_process(self, worker_id) -> BlueprintInstructionState:
@@ -107,5 +117,5 @@ class BlueprintInstructionExecutionStore(ABC):
         pass
 
     @abstractmethod
-    def get_blueprint_from_id(self, blueprint_execution_id) -> BlueprintExecution:
+    def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
         pass
