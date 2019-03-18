@@ -28,7 +28,7 @@ class EventBus(ABC):
         pass
 
     @abstractmethod
-    def get_event(self, topic):
+    def get_event(self, topic, blueprint_execution_id) -> Event:
         pass
 
 

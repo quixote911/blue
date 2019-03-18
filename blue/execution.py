@@ -60,10 +60,10 @@ class BlueprintExecutor:
                 log.info(f"Completed Max iterations. Exiting.")
                 break
 
-    def _check_conditions(self, conditions):
+    def _check_conditions(self, conditions, blueprint_execution_id):
         events = []
         for event_topic in conditions:
-            event: Event = self.event_bus.get_event(event_topic)
+            event: Event = self.event_bus.get_event(event_topic, blueprint_execution_id)
             if not event:
                 continue
             events.append(event)
@@ -85,7 +85,7 @@ class BlueprintExecutor:
 
     def _process_instruction(self, instruction_state: BlueprintInstructionState):
         log.info(f"Processing BlueprintInstruction {instruction_state}")
-        events = self._check_conditions(instruction_state.instruction.conditions)
+        events = self._check_conditions(instruction_state.instruction.conditions, instruction_state.blueprint_execution_id)
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")
             return

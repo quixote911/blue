@@ -5,7 +5,7 @@ import uuid
 import copy
 import pytest
 
-from blue.base import BlueprintExecution, Blueprint, BlueprintInstruction, BlueprintInstructionOutcome, Action, Adapter, BlueprintInstructionState
+from blue.base import BlueprintExecution, Blueprint, BlueprintInstruction, BlueprintInstructionOutcome, Action, Adapter, BlueprintInstructionState, Event
 
 
 def initialize_fixtures():
@@ -140,3 +140,7 @@ def sample_blueprint_execution():
         blueprint=_data_sample_blueprint,
         instructions_states=[get_data_sample_instruction_state_1()]
     )
+
+@pytest.fixture()
+def sample_event():
+    return Event(topic="myeventtopic", metadata={"blueprint_execution_id": _data_blueprint_execution_id}, body=dict(lorem='ipsum'))

@@ -6,7 +6,8 @@ from dataclasses import asdict
 from peewee import Model, CharField, Proxy
 from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
-from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction
+from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction, EventBus, \
+    Event
 from blue.util import blue_json_dumps, superjson
 
 database_proxy = Proxy()  # Create a proxy for our db.
@@ -30,6 +31,31 @@ class BlueprintInstructionStateModel(BaseModel):
     status = CharField()
 
 
+class EventModel(BaseModel):
+    topic = CharField()
+    metadata = JSONField(dumps=blue_json_dumps)
+    body = JSONField(dumps=blue_json_dumps)
+
+
+class DbEventBus(EventBus):
+    def __init__(self, config):
+        super().__init__(config)
+        self.db = PostgresqlExtDatabase(**config['db'])
+        self._migrations()
+
+    def _migrations(self):
+        self.db.create_tables([EventModel], safe=True)
+
+    def publish(self, event: Event):
+        eventmodel = EventModel(topic=event.topic, body=event.body, metadata=event.metadata)
+        eventmodel.save()
+
+    def get_event(self, topic, blueprint_execution_id):
+        eventmodel: EventModel = EventModel.select().where((EventModel.topic == topic) & (
+                    EventModel.metadata['blueprint_execution_id'] == blueprint_execution_id)).get()
+        return Event(topic=eventmodel.topic, metadata=eventmodel.metadata, body=eventmodel.body)
+
+
 class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
 
     def __init__(self, config):
@@ -44,9 +70,6 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
     def remove_effects(self):
         self.sqs.delete_queue(QueueUrl=self._queue_url)
         self.db.drop_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
-
-    def rerun_migrations(self):
-        self._migrations()
 
     def _get_queue_name(self):
         queue_name = 'BlueprintInstructionExecutionStore'
