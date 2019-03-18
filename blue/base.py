@@ -109,6 +109,8 @@ class BlueprintInstructionExecutionStore(ABC):
 
     def get_instruction_to_process(self, worker_id=None) -> Optional[BlueprintInstructionState]:
         instruction_state = self._get_instruction_to_process(worker_id)
+        if not instruction_state:
+            return
         self._set_status_for_instruction(instruction_state, InstructionStatus.PROCESSING)
         return instruction_state
 

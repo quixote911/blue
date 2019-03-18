@@ -94,22 +94,25 @@ class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
         return BlueprintInstructionState(
             instruction=BlueprintInstruction(**b['instruction']),
             blueprint_execution_id=b['blueprint_execution_id'],
-            blueprint=None,
             status=InstructionStatus(b['status']),
-            _id=b['id_']
+            id_=b['id_']
         )
 
     def _remove_from_queue(self, instruction_state: BlueprintInstructionState):
         self.sqs.delete_message(
             QueueUrl=self._queue_url,
-            ReceiptHandle=self.receipthandle_by_instructionstateid[instruction_state._id]
+            ReceiptHandle=self.receipthandle_by_instructionstateid[instruction_state.id_]
         )
 
     def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
-        BlueprintInstructionStateModel.update(status=status.value).where(instruction_state_id=instruction_state.id_)
-        if instruction_state.status in InstructionStatus.IDLE:
-            return
-        self._remove_from_queue(instruction_state)
+        terminal_states = [InstructionStatus.COMPLETE, InstructionStatus.FAILED]
+        instruction_state.status = status
+        BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_)
+        if instruction_state.status in terminal_states:
+            self._remove_from_queue(instruction_state)
+        else:
+            # We're relying on the visibility timeout to retry
+            pass
 
     def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
         model: BlueprintExecutionModel = BlueprintExecutionModel.select().where(BlueprintExecutionModel.execution_id == blueprint_execution_id).get()

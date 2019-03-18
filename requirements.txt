@@ -2,3 +2,4 @@ dataclasses==0.6
 pytest==4.3.1
 peewee==3.9.2
 boto3==1.9.115
+moto
