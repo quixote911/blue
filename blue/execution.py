@@ -80,7 +80,7 @@ class BlueprintExecutor:
             f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
 
         adapter_instance: Adapter = outcome.adapter()
-        adapter_result = adapter_instance.adapt(events, execution_context)
+        adapter_result = adapter_instance.adapt(execution_context, events)
         log.info(f"Adapter result - {adapter_result}")
 
         action_instance: Action = outcome.action(self.event_bus)
