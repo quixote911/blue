@@ -6,6 +6,7 @@ import copy
 import pytest
 
 from blue.base import BlueprintExecution, Blueprint, BlueprintInstruction, BlueprintInstructionOutcome, Action, Adapter, BlueprintInstructionState, Event
+from blue.blueprint import BlueprintManager
 
 
 def initialize_fixtures():
@@ -156,3 +157,8 @@ def sample_blueprint_execution():
 @pytest.fixture()
 def sample_event():
     return Event(topic="myeventtopic", metadata={"blueprint_execution_id": _data_blueprint_execution_id}, body=dict(lorem='ipsum'))
+
+
+@pytest.fixture(scope="package")
+def sample_blueprint_manager(sample_namespace_config):
+    return BlueprintManager(sample_namespace_config)

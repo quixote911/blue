@@ -2,10 +2,13 @@ import logging
 import uuid
 from typing import List, Dict
 
+from dataclasses import asdict
+
 from blue.base import BlueError, BlueprintInstructionExecutionStore, EventBus, Event, BlueprintInstructionOutcome, InstructionStatus, BlueprintInstructionState, \
     Blueprint, BlueprintExecution
 
 from blue.base import Action, Adapter
+from blue.blueprint import BlueprintManager
 
 log = logging.getLogger(__name__)
 
@@ -38,10 +41,10 @@ class BlueprintExecutor:
     # DEFAULT_POLL_TIME = 10
     DEFAULT_WORKER_ID = "unnamed"
 
-    def __init__(self, execution_manager: BlueprintExecutionManager, worker_id=None, max_iteration_count=None):
+    def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None):
         self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
-
+        self.blueprint_manager = blueprint_manager
         self.worker_id = worker_id or self.DEFAULT_WORKER_ID
         self.iteration_count = 0
         self.max_iteration_count = max_iteration_count
@@ -51,14 +54,16 @@ class BlueprintExecutor:
         while True:
             self.iteration_count += 1
             instruction_state: BlueprintInstructionState = self.execution_store.get_instruction_to_process(self.worker_id)
+
             if not instruction_state:
-                log.info("No Blueprint Exectution Instruction State found from execution_store")
+                log.info("No Blueprint Execution Instruction State found from execution_store")
                 continue
             self._process_instruction(instruction_state)
 
             if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
                 log.info(f"Completed Max iterations. Exiting.")
                 break
+
 
     def _check_conditions(self, conditions, blueprint_execution_id):
         events = []

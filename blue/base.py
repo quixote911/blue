@@ -91,8 +91,8 @@ class BlueprintExecution:
 
 
 class BlueprintInstructionExecutionStore(ABC):
-    def __init__(self, config):
-        pass
+    def __init__(self, manager, config=None):
+        self.manager = manager
 
     @abstractmethod
     def _store_blueprint_execution(self, blueprint_execution: BlueprintExecution):

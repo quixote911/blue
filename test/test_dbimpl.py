@@ -18,9 +18,9 @@ def teardown_module(module):
 
 
 @pytest.fixture(scope="module")
-def instruction_execution_store(sample_execution_store_config):
+def instruction_execution_store(sample_blueprint_manager, sample_execution_store_config):
     with mock_sqs():
-        store = PersistentBlueprintInstructionExecutionStore(sample_execution_store_config)
+        store = PersistentBlueprintInstructionExecutionStore(sample_blueprint_manager, sample_execution_store_config)
         # store.remove_effects()
         # store.rerun_migrations()
         yield store

@@ -11,8 +11,8 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
 
 
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, manager, config):
+        super().__init__(manager, config)
         self._stored_blueprint_executions = {}
         self._stored_instruction_states = {}
 

@@ -9,6 +9,7 @@ from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
 from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction, EventBus, \
     Event
+from blue.blueprint import BlueprintManager
 from blue.util import blue_json_dumps, superjson
 
 database_proxy = Proxy()  # Create a proxy for our db.
@@ -65,8 +66,8 @@ class PersistentEventBus(EventBus):
 
 class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
 
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, manager: BlueprintManager, config):
+        super().__init__(manager, config)
         self.config = config
         self.db = PostgresqlExtDatabase(**config['db'])
         database_proxy.initialize(self.db)
@@ -122,7 +123,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         b = json.loads(messages[0]['Body'])
         self.receipthandle_by_instructionstateid[b['id_']] = messages[0]['ReceiptHandle']
         return BlueprintInstructionState(
-            instruction=BlueprintInstruction(**b['instruction']),
+            instruction=self.manager.objectify_instruction(b['instruction']),
             blueprint_execution_id=b['blueprint_execution_id'],
             status=InstructionStatus(b['status']),
             id_=b['id_']

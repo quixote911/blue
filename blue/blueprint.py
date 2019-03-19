@@ -28,7 +28,7 @@ class BlueprintManager:
             for cls in config['namespace'][each]:
                 if each not in namespace:
                     namespace[each] = {}
-                namespace[each][cls.__name__] = cls
+                namespace[each][cls.__qualname__] = cls
         return namespace
 
     def _validate_blueprint_definition(self, blueprint_definition):
@@ -57,7 +57,7 @@ class BlueprintManager:
                     raise InvalidBlueprintDefinition(
                         f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
 
-    def _objectify_instruction(self, instruction_definition: Dict) -> BlueprintInstruction:
+    def objectify_instruction(self, instruction_definition: Dict, safe=False) -> BlueprintInstruction:
         def _objectify(attribute, component_name):
             return self.namespace[attribute][component_name]
 
@@ -71,7 +71,7 @@ class BlueprintManager:
     def _convert_blueprint_definition_to_object(self, blueprint_definition) -> Blueprint:
         instructions = []
         for definition in blueprint_definition['instructions']:
-            instruction: BlueprintInstruction = self._objectify_instruction(definition)
+            instruction: BlueprintInstruction = self.objectify_instruction(definition)
             instructions.append(instruction)
         return Blueprint(blueprint_definition['name'], instructions)
 
