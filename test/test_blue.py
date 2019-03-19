@@ -4,11 +4,11 @@ from blue.base import Action, Adapter, Event
 from blue.blueprint import BlueprintManager
 from blue.execution import BlueprintExecutionManager, BlueprintExecutor
 from blue.impl.inmemory import InMemoryEventBus, InMemoryBlueprintInstructionExecutionStore
-from fixtures import *
+# from conftest import initialize_fixtures
 
 log = logging.getLogger(__name__)
 
-initialize_fixtures()
+# initialize_fixtures()
 
 
 def basic_initialize_execution_manager(sample_namespace_config, sample_blueprint_definition):

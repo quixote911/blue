@@ -1,9 +1,10 @@
+import pytest
 from moto import mock_s3, mock_sqs
 
-from blue.base import InstructionStatus
+from blue.base import InstructionStatus, Event
 from blue.impl.persistent import PersistentBlueprintInstructionExecutionStore, PersistentEventBus
 from blue.util import superjson
-from fixtures import *
+from conftest import get_random_string
 
 
 def setup_module(module):

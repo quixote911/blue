@@ -11,10 +11,13 @@ from blue.base import BlueprintExecution, Blueprint, BlueprintInstruction, Bluep
 def initialize_fixtures():
     pass
 
+
 def get_random_string(N):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
+
 testrunid = get_random_string(5)
+
 
 class CheckForDeposit(Action):
     def act(self, input):
@@ -85,11 +88,13 @@ _data_sample_blueprint = Blueprint(
     instructions=[_data_sample_instruction_1, _data_sample_instruction_2]
 )
 
+
 def get_data_sample_instruction_state_1():
     return BlueprintInstructionState(
-    instruction=_data_sample_instruction_1,
-    blueprint_execution_id=_data_blueprint_execution_id,
-)
+        instruction=_data_sample_instruction_1,
+        blueprint_execution_id=_data_blueprint_execution_id,
+    )
+
 
 queue_prefix = 'test_'
 
@@ -118,7 +123,7 @@ def sample_namespace_config():
 
 
 @pytest.fixture(scope="package")
-def _data_sample_blueprint_definition():
+def sample_blueprint_definition():
     return _data_sample_blueprint_definition
 
 
@@ -140,6 +145,7 @@ def sample_blueprint_execution():
         blueprint=_data_sample_blueprint,
         instructions_states=[get_data_sample_instruction_state_1()]
     )
+
 
 @pytest.fixture()
 def sample_event():
