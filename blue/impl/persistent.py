@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Dict, Optional
 
 import boto3
@@ -12,6 +13,7 @@ from blue.util import blue_json_dumps, superjson
 
 database_proxy = Proxy()  # Create a proxy for our db.
 
+log = logging.getLogger(__name__)
 
 class BaseModel(Model):
     class Meta:
@@ -133,6 +135,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         )
 
     def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
+        log.info(f"Setting instruction_state {instruction_state.id_}'s status to be {status}")
         terminal_states = [InstructionStatus.COMPLETE, InstructionStatus.FAILED]
         instruction_state.status = status
         BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_).execute()

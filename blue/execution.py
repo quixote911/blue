@@ -88,6 +88,7 @@ class BlueprintExecutor:
         events = self._check_conditions(instruction_state.instruction.conditions, instruction_state.blueprint_execution_id)
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")
+            self.execution_store.requeue(instruction_state)
             return
         try:
             self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)
