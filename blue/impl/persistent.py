@@ -51,8 +51,15 @@ class PersistentEventBus(EventBus):
         self.db.create_tables([EventModel], safe=True)
 
     def publish(self, event: Event):
-        eventmodel = EventModel(topic=event.topic, body=event.body, metadata=event.metadata)
-        eventmodel.save()
+        exec_id = event.metadata['blueprint_execution_id']
+        existing_event = self.get_event(event.topic, exec_id)
+        if not existing_event:
+            newevent = EventModel(topic=event.topic, body=event.body, metadata=event.metadata)
+            newevent.save()
+        else:
+            existing_event.body = event.body
+            existing_event.metadata = event.metadata
+            existing_event.save()
 
     def get_event(self, topic: str, blueprint_execution_id: str):
         try:
