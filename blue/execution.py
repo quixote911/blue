@@ -2,6 +2,7 @@ import logging
 import uuid
 from typing import List, Dict
 
+import time
 from dataclasses import asdict
 
 from blue.base import BlueError, BlueprintInstructionExecutionStore, EventBus, Event, BlueprintInstructionOutcome, InstructionStatus, BlueprintInstructionState, \
@@ -40,6 +41,7 @@ class BlueprintExecutionManager:
 class BlueprintExecutor:
     # DEFAULT_POLL_TIME = 10
     DEFAULT_WORKER_ID = "unnamed"
+    DEFAULT_LOOP_INTERVAL = 5
 
     def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None):
         self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
@@ -57,13 +59,19 @@ class BlueprintExecutor:
 
             if not instruction_state:
                 log.info("No Blueprint Execution Instruction State found from execution_store")
+                self._sleep()
                 continue
-            self._process_instruction(instruction_state)
 
+            self._process_instruction(instruction_state)
+            self._sleep()
             if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
                 log.info(f"Completed Max iterations. Exiting.")
                 break
 
+    def _sleep(self):
+        t = self.DEFAULT_LOOP_INTERVAL
+        log.info(f'Sleeping for {t} seconds')
+        time.sleep(t)
 
     def _check_conditions(self, conditions, blueprint_execution_id):
         events = []
