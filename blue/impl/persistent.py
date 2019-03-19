@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 import boto3
 from dataclasses import asdict
-from peewee import Model, CharField, Proxy
+from peewee import Model, CharField, Proxy, DoesNotExist
 from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
 from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction, EventBus, \
@@ -51,10 +51,14 @@ class PersistentEventBus(EventBus):
         eventmodel = EventModel(topic=event.topic, body=event.body, metadata=event.metadata)
         eventmodel.save()
 
-    def get_event(self, topic, blueprint_execution_id):
-        eventmodel: EventModel = EventModel.select().where((EventModel.topic == topic) & (
-                    EventModel.metadata['blueprint_execution_id'] == blueprint_execution_id)).get()
-        return Event(topic=eventmodel.topic, metadata=eventmodel.metadata, body=eventmodel.body)
+    def get_event(self, topic: str, blueprint_execution_id: str):
+        try:
+            eventmodel = EventModel.get((EventModel.topic == topic) & (EventModel.metadata['blueprint_execution_id'] == blueprint_execution_id))
+            return eventmodel
+        except DoesNotExist as e:
+            return
+
+
 
 
 class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
