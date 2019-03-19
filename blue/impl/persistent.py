@@ -37,7 +37,7 @@ class EventModel(BaseModel):
     body = JSONField(dumps=blue_json_dumps)
 
 
-class DbEventBus(EventBus):
+class PersistentEventBus(EventBus):
     def __init__(self, config):
         super().__init__(config)
         self.db = PostgresqlExtDatabase(**config['db'])
@@ -56,7 +56,7 @@ class DbEventBus(EventBus):
         return Event(topic=eventmodel.topic, metadata=eventmodel.metadata, body=eventmodel.body)
 
 
-class DbBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
+class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
 
     def __init__(self, config):
         super().__init__(config)

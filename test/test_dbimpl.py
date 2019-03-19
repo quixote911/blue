@@ -1,7 +1,7 @@
 from moto import mock_s3, mock_sqs
 
 from blue.base import InstructionStatus
-from blue.impl.db import DbBlueprintInstructionExecutionStore, DbEventBus
+from blue.impl.persistent import PersistentBlueprintInstructionExecutionStore, PersistentEventBus
 from blue.util import superjson
 from fixtures import *
 
@@ -19,7 +19,7 @@ def teardown_module(module):
 @pytest.fixture(scope="module")
 def instruction_execution_store(sample_execution_store_config):
     with mock_sqs():
-        store = DbBlueprintInstructionExecutionStore(sample_execution_store_config)
+        store = PersistentBlueprintInstructionExecutionStore(sample_execution_store_config)
         # store.remove_effects()
         # store.rerun_migrations()
         yield store
@@ -49,7 +49,7 @@ def test_get_instruction(instruction_execution_store, sample_blueprint_execution
 
 
 def test_event_bus(sample_execution_store_config, sample_event):
-    eventbus = DbEventBus(sample_execution_store_config)
+    eventbus = PersistentEventBus(sample_execution_store_config)
     eventbus.publish(sample_event)
     event: Event = eventbus.get_event(sample_event.topic, sample_event.metadata['blueprint_execution_id'])
     assert sample_event.metadata['blueprint_execution_id'] == event.metadata['blueprint_execution_id']
