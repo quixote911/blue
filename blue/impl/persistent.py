@@ -83,7 +83,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
                 if queue_name in url:
                     self._queue_url = url
                     return True
-                return False
+            return False
 
         queue_name = self._get_queue_name()
         self.db.create_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
