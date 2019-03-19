@@ -6,7 +6,7 @@ A Blueprint is a set of Instructions
         A Condition is a list of Event topics to listen to
         An Outcome specifes what happens when Condition is satisfied
 
-A BlueprintExecution happens when a Blueprint with an initial Event and an execution_context
+A BlueprintExecution happens when a Blueprint is supplied with an initial Event and an execution_context
 
 How to use:
 
