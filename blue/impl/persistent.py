@@ -135,7 +135,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
     def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
         terminal_states = [InstructionStatus.COMPLETE, InstructionStatus.FAILED]
         instruction_state.status = status
-        BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_)
+        BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_).execute()
         if instruction_state.status in terminal_states:
             self._remove_from_queue(instruction_state)
         else:
