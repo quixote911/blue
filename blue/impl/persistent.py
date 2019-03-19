@@ -109,7 +109,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
 
     def _get_instruction_to_process(self, worker_id) -> Optional[BlueprintInstructionState]:
         response = self.sqs.receive_message(QueueUrl=self._queue_url, MaxNumberOfMessages=1)
-        messages = response['Messages']
+        messages = response.get('Messages')
         if not messages:
             return
 
