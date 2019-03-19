@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='blue_event_framework',
-    version='0.2.0',
+    version='0.2.1',
     author='Coinswitch',
     author_email='dev@coinswitch.co',
     description='dummy description',

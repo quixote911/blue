@@ -36,6 +36,7 @@ class BlueprintExecutionManager:
         blueprint_execution = BlueprintExecution(blueprint_execution_id, execution_context, blueprint, instructions_states)
         self.execution_store.store(blueprint_execution)
         self.event_bus.publish(boot_event)
+        return blueprint_execution
 
 
 class BlueprintExecutor:
