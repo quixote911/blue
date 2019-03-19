@@ -51,15 +51,15 @@ _data_sample_blueprint_definition = {
         {
             "conditions": ["new_order"],
             "outcome": {
-                "action": "check_deposit",
-                "adapter": "basic_adapter"
+                "action": "CheckForDeposit",
+                "adapter": "BasicAdapter"
             }
         },
         {
             "conditions": ["deposit_status"],
             "outcome": {
-                "action": "transfer_to_exchange",
-                "adapter": "basic_adapter"
+                "action": "TransferToExchange",
+                "adapter": "BasicAdapter"
             }
         }
     ]
@@ -117,9 +117,15 @@ def sample_execution_store_config():
     return _data_sample_execution_store_config
 
 
+
 @pytest.fixture(scope="package")
 def sample_namespace_config():
-    return _data_sample_namespace_config
+    return {
+        'namespace': {
+            'action': [CheckForDeposit, TransferToExchange],
+            'adapter': [BasicAdapter],
+        }
+    }
 
 
 @pytest.fixture(scope="package")

@@ -13,17 +13,23 @@ class BlueprintManager:
     instruction_outcome_attribute_names = ['action', 'adapter']
 
     def __init__(self, config):
-        BlueprintManager.validate_config(config)
+        self.namespace = BlueprintManager.parse_config(config)
         self.config = config
         self.live_blueprints_by_name = {}
 
     @staticmethod
-    def validate_config(config):
+    def parse_config(config):
+        namespace = {}
         if 'namespace' not in config:
             raise InvalidBlueprintDefinition(f"Config must have 'namespace' key")
         for each in BlueprintManager.instruction_outcome_attribute_names:
             if each not in config['namespace']:
                 raise InvalidBlueprintDefinition(f"Namespace must have key '{each}'")
+            for cls in config['namespace'][each]:
+                if each not in namespace:
+                    namespace[each] = {}
+                namespace[each][cls.__name__] = cls
+        return namespace
 
     def _validate_blueprint_definition(self, blueprint_definition):
         if not blueprint_definition:
@@ -46,14 +52,14 @@ class BlueprintManager:
                     raise InvalidBlueprintDefinition(
                         f"Instruction Outcome attribute '{outcome_attribute_name}' must exist inside instruction 'outcome' of {instruction}")
 
-                component_object = self.config['namespace'][outcome_attribute_name].get(component_name)
+                component_object = self.namespace[outcome_attribute_name].get(component_name)
                 if not component_object:
                     raise InvalidBlueprintDefinition(
                         f"As per configured namespace {self.config}, no component is defined for attribute_name={outcome_attribute_name} componenet_name={component_name}")
 
     def _objectify_instruction(self, instruction_definition: Dict) -> BlueprintInstruction:
         def _objectify(attribute, component_name):
-            return self.config['namespace'][attribute][component_name]
+            return self.namespace[attribute][component_name]
 
         outcome = BlueprintInstructionOutcome(
             action=_objectify('action', instruction_definition['outcome']['action']),
