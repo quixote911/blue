@@ -41,6 +41,7 @@ class PersistentEventBus(EventBus):
     def __init__(self, config):
         super().__init__(config)
         self.db = PostgresqlExtDatabase(**config['db'])
+        database_proxy.initialize(self.db)
         self._migrations()
 
     def _migrations(self):
