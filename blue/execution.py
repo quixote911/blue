@@ -83,8 +83,10 @@ class BlueprintExecutor:
             events.append(event)
         return events
 
-    def _execute_outcome(self, outcome: BlueprintInstructionOutcome, blueprint_execution_id: str, events: List[Event]):
-        execution_context = self.execution_store.get_execution_context_from_id(blueprint_execution_id)
+    def _execute_outcome(self, instruction_state: BlueprintInstructionState, events: List[Event]):
+        outcome = instruction_state.instruction.outcome
+        blueprint_execution_id = instruction_state.blueprint_execution_id
+        execution_context = self.execution_store.get_execution_context_from_id(instruction_state.blueprint_execution_id)
         log.info(
             f"Found events {events}. Executing Outcome - Action {outcome.action} with Adapter {outcome.adapter} in context {execution_context}")
 
@@ -92,7 +94,8 @@ class BlueprintExecutor:
         adapter_result = adapter_instance.adapt(execution_context, events)
         log.info(f"Adapter result - {adapter_result}")
 
-        action_instance: Action = outcome.action(self.event_bus)
+        metadata = dict(blueprint_execution_id=blueprint_execution_id, instruction_state=instruction_state.id_)
+        action_instance: Action = outcome.action(self.event_bus, metadata=metadata)
         action_result = action_instance.act(adapter_result)
         log.info(f"Action result - {action_result}")
         return action_result
@@ -105,7 +108,7 @@ class BlueprintExecutor:
             self.execution_store.requeue(instruction_state)
             return
         try:
-            self._execute_outcome(instruction_state.instruction.outcome, instruction_state.blueprint_execution_id, events)
+            self._execute_outcome(instruction_state, events)
         except NoActionRequired:
             log.info("Received NoActionRequired")
             self.execution_store.requeue(instruction_state)

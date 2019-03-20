@@ -33,7 +33,8 @@ class EventBus(ABC):
 
 
 class Action(ABC):
-    def __init__(self, event_bus: EventBus):
+    def __init__(self, event_bus: EventBus, metadata: Dict = None):
+        self._metadata = metadata
         self.event_bus = event_bus
 
     @abstractmethod
@@ -42,6 +43,9 @@ class Action(ABC):
 
 
 class Adapter(ABC):
+    def __init__(self, metadata: Dict = None):
+        self._metadata = metadata
+
     @abstractmethod
     def adapt(self, context, events):
         pass
