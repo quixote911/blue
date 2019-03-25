@@ -77,14 +77,19 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         super().__init__(manager, config)
         self.config = config
         self.db = PostgresqlExtDatabase(**config['db'])
-        database_proxy.initialize(self.db)
-        self.sqs = boto3.client('sqs')
+        self._initialize()
         self._migrations()
         self.receipthandle_by_instructionstateid = dict()
 
     def remove_effects(self):
         self.sqs.delete_queue(QueueUrl=self._queue_url)
         self.db.drop_tables([BlueprintExecutionModel, BlueprintInstructionStateModel], safe=True)
+
+    def _initialize(self):
+        database_proxy.initialize(self.db)
+        sqs_region = self.config.get('sqs', {}).get('region_name')
+        kwargs = {} if not sqs_region else dict(region_name=sqs_region)
+        self.sqs = boto3.client('sqs', **kwargs)
 
     def _get_queue_name(self):
         queue_name = 'BlueprintInstructionExecutionStore'
