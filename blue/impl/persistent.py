@@ -16,6 +16,7 @@ database_proxy = Proxy()  # Create a proxy for our db.
 
 log = logging.getLogger(__name__)
 
+
 class BaseModel(Model):
     class Meta:
         database = database_proxy  # Use proxy for our DB.
@@ -67,8 +68,6 @@ class PersistentEventBus(EventBus):
             return eventmodel
         except DoesNotExist as e:
             return
-
-
 
 
 class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecutionStore):
@@ -134,7 +133,15 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         b = json.loads(messages[0]['Body'])
         self.receipthandle_by_instructionstateid[b['id_']] = messages[0]['ReceiptHandle']
 
-        # instruction_state_model = BlueprintExecutionModel.select(for_update=True).where(BlueprintInstructionStateModel.instruction_state_id == b['id_']).get()
+        try:
+            instruction_state_model = BlueprintInstructionStateModel.select().for_update().where(
+                (BlueprintInstructionStateModel.instruction_state_id == b['id_']) & (BlueprintInstructionStateModel.status == InstructionStatus.IDLE.value)).get()
+        except DoesNotExist:
+            instruction_state_model = None
+
+        if not instruction_state_model:
+            log.info("Got message with body {b} but did not get corresponding row in table. Might be a race condition.")
+            return
 
         return BlueprintInstructionState(
             instruction=self.manager.objectify_instruction(b['instruction']),
@@ -153,7 +160,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         log.info(f"Setting instruction_state {instruction_state.id_}'s status to be {status}")
         terminal_states = [InstructionStatus.SUCCESS, InstructionStatus.FAILED, InstructionStatus.END]
         instruction_state.status = status
-        BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_).execute()
+        BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id == instruction_state.id_).execute()
         if instruction_state.status in terminal_states:
             self._remove_from_queue(instruction_state)
         else:
@@ -163,3 +170,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
     def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
         model: BlueprintExecutionModel = BlueprintExecutionModel.select().where(BlueprintExecutionModel.execution_id == blueprint_execution_id).get()
         return dict(model.execution_context)
+
+    def get_instruction_to_process(self, worker_id=None) -> Optional[BlueprintInstructionState]:
+        with self.db.atomic():
+            return super().get_instruction_to_process(worker_id)
