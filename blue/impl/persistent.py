@@ -149,7 +149,7 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
 
     def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
         log.info(f"Setting instruction_state {instruction_state.id_}'s status to be {status}")
-        terminal_states = [InstructionStatus.COMPLETE, InstructionStatus.FAILED]
+        terminal_states = [InstructionStatus.SUCCESS, InstructionStatus.FAILED, InstructionStatus.END]
         instruction_state.status = status
         BlueprintInstructionStateModel.update(status=status.value).where(BlueprintInstructionStateModel.instruction_state_id==instruction_state.id_).execute()
         if instruction_state.status in terminal_states:

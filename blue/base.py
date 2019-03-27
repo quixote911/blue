@@ -56,8 +56,9 @@ class Adapter(ABC):
 class InstructionStatus(AutoNameEnum):
     IDLE = auto()
     PROCESSING = auto()
-    COMPLETE = auto()
+    SUCCESS = auto()
     FAILED = auto()
+    END = auto
 
 
 @dataclass
@@ -70,6 +71,7 @@ class BlueprintInstructionOutcome:
 class BlueprintInstruction:
     conditions: List[str]
     outcome: BlueprintInstructionOutcome
+    termination_conditions: Optional[List[str]] = field(default_factory=list)
 
 
 @dataclass
@@ -119,13 +121,16 @@ class BlueprintInstructionExecutionStore(ABC):
         return instruction_state
 
     def acknowledge_success(self, instruction_state: BlueprintInstructionState):
-        self._set_status_for_instruction(instruction_state, InstructionStatus.COMPLETE)
+        self._set_status_for_instruction(instruction_state, InstructionStatus.SUCCESS)
 
     def requeue(self, instruction_state: BlueprintInstructionState):
         self._set_status_for_instruction(instruction_state, InstructionStatus.IDLE)
 
     def report_failure(self, instruction_state: BlueprintInstructionState):
         self._set_status_for_instruction(instruction_state, InstructionStatus.FAILED)
+
+    def end(self, instruction_state: BlueprintInstructionState):
+        self._set_status_for_instruction(instruction_state, InstructionStatus.END)
 
     @abstractmethod
     def _get_instruction_to_process(self, worker_id) -> Optional[BlueprintInstructionState]:

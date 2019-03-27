@@ -23,12 +23,17 @@ class InMemoryBlueprintInstructionExecutionStore(BlueprintInstructionExecutionSt
         self._stored_instruction_states[instruction_state.id_] = instruction_state
 
     def _get_instruction_to_process(self, worker_id) -> Optional[BlueprintInstructionState]:
-        instruction_id = random.choice(list(self._stored_instruction_states.keys()))
+        all_idle_ids = [k.id_ for k in self._stored_instruction_states.values() if k.status == InstructionStatus.IDLE]
+        if not all_idle_ids:
+            return
+        instruction_id = random.choice(all_idle_ids)
         instruction_state = self._stored_instruction_states[instruction_id]
         return instruction_state
 
-    def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, state: InstructionStatus):
-        instruction_state.status = state
+    def _set_status_for_instruction(self, instruction_state: BlueprintInstructionState, status: InstructionStatus):
+        stored_instruction_state = self._stored_instruction_states[instruction_state.id_]
+        stored_instruction_state.status = status
+        return stored_instruction_state
 
     def get_execution_context_from_id(self, blueprint_execution_id) -> Dict:
         return self._stored_blueprint_executions.get(blueprint_execution_id).execution_context

@@ -65,8 +65,11 @@ class BlueprintManager:
             action=_objectify('action', instruction_definition['outcome']['action']),
             adapter=_objectify('adapter', instruction_definition['outcome']['adapter'])
         )
+        instruction_dict = dict(conditions=instruction_definition['conditions'], outcome=outcome)
+        if instruction_definition.get('termination_conditions'):
+            instruction_dict.update(dict(termination_conditions=instruction_definition['termination_conditions']))
 
-        return BlueprintInstruction(conditions=instruction_definition['conditions'], outcome=outcome)
+        return BlueprintInstruction(**instruction_dict)
 
     def _convert_blueprint_definition_to_object(self, blueprint_definition) -> Blueprint:
         instructions = []

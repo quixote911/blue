@@ -44,13 +44,14 @@ class BlueprintExecutor:
     DEFAULT_WORKER_ID = "unnamed"
     DEFAULT_LOOP_INTERVAL = 5
 
-    def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None):
+    def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None, no_sleep=False):
         self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
         self.blueprint_manager = blueprint_manager
         self.worker_id = worker_id or self.DEFAULT_WORKER_ID
         self.iteration_count = 0
         self.max_iteration_count = max_iteration_count
+        self.no_sleep = no_sleep
 
     def run(self):
         log.info('Starting BlueprintExecutor')
@@ -60,16 +61,25 @@ class BlueprintExecutor:
 
             if not instruction_state:
                 log.info("No Blueprint Execution Instruction State found from execution_store")
+                if self._reached_max_iterations():
+                    break
                 self._sleep()
                 continue
 
             self._process_instruction(instruction_state)
             self._sleep()
-            if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
-                log.info(f"Completed Max iterations. Exiting.")
+            if self._reached_max_iterations():
                 break
 
+    def _reached_max_iterations(self):
+        if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
+            log.info(f"Completed Max iterations. Exiting.")
+            return True
+        return False
+
     def _sleep(self):
+        if self.no_sleep:
+            return
         t = self.DEFAULT_LOOP_INTERVAL
         log.info(f'Sleeping for {t} seconds')
         time.sleep(t)
@@ -100,8 +110,21 @@ class BlueprintExecutor:
         log.info(f"Action result - {action_result}")
         return action_result
 
+    def _check_termination_conditions(self, instruction_state: BlueprintInstructionState):
+        if not instruction_state.instruction.termination_conditions:
+            return False
+        events: List[Event] = self._check_conditions(instruction_state.instruction.termination_conditions, instruction_state.blueprint_execution_id)
+        if len(events) == len(instruction_state.instruction.conditions):
+            log.info(f"Met terminal condition because of events={events}. Ending InstructionState.")
+            self.execution_store.end(instruction_state)
+            return True
+        return False
+
     def _process_instruction(self, instruction_state: BlueprintInstructionState):
         log.info(f"Processing BlueprintInstruction {instruction_state}")
+        if self._check_termination_conditions(instruction_state):
+            return
+
         events = self._check_conditions(instruction_state.instruction.conditions, instruction_state.blueprint_execution_id)
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")

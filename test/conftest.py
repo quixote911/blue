@@ -54,14 +54,16 @@ _data_sample_blueprint_definition = {
             "outcome": {
                 "action": "CheckForDeposit",
                 "adapter": "BasicAdapter"
-            }
+            },
+            "termination_conditions": ["deposit_timeout"]
         },
         {
             "conditions": ["deposit_status"],
             "outcome": {
                 "action": "TransferToExchange",
                 "adapter": "BasicAdapter"
-            }
+            },
+            "termination_conditions": ["deposit_timeout"]
         }
     ]
 }
@@ -73,7 +75,8 @@ _data_sample_instruction_1 = BlueprintInstruction(
     outcome=BlueprintInstructionOutcome(
         action=CheckForDeposit,
         adapter=BasicAdapter
-    )
+    ),
+    termination_conditions=['deposit_timeout']
 )
 
 _data_sample_instruction_2 = BlueprintInstruction(
@@ -81,7 +84,8 @@ _data_sample_instruction_2 = BlueprintInstruction(
     outcome=BlueprintInstructionOutcome(
         action=TransferToExchange,
         adapter=BasicAdapter
-    )
+    ),
+    termination_conditions=['deposit_timeout']
 )
 
 _data_sample_blueprint = Blueprint(
