@@ -7,7 +7,7 @@ from dataclasses import asdict
 from peewee import Model, CharField, Proxy, DoesNotExist
 from playhouse.postgres_ext import PostgresqlExtDatabase, JSONField
 
-from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, BlueprintInstruction, EventBus, \
+from blue.base import BlueprintInstructionExecutionStore, BlueprintExecution, BlueprintInstructionState, InstructionStatus, EventBus, \
     Event
 from blue.blueprint import BlueprintManager
 from blue.util import blue_json_dumps, superjson
@@ -131,9 +131,11 @@ class PersistentBlueprintInstructionExecutionStore(BlueprintInstructionExecution
         messages = response.get('Messages')
         if not messages:
             return
-
         b = json.loads(messages[0]['Body'])
         self.receipthandle_by_instructionstateid[b['id_']] = messages[0]['ReceiptHandle']
+
+        # instruction_state_model = BlueprintExecutionModel.select(for_update=True).where(BlueprintInstructionStateModel.instruction_state_id == b['id_']).get()
+
         return BlueprintInstructionState(
             instruction=self.manager.objectify_instruction(b['instruction']),
             blueprint_execution_id=b['blueprint_execution_id'],
