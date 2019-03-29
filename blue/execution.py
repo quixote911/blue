@@ -1,6 +1,7 @@
 import logging
 import uuid
-from typing import List, Dict
+from enum import auto
+from typing import List, Dict, Optional
 
 import time
 from dataclasses import asdict
@@ -10,6 +11,7 @@ from blue.base import BlueError, BlueprintInstructionExecutionStore, EventBus, E
 
 from blue.base import Action, Adapter
 from blue.blueprint import BlueprintManager
+from blue.util import AutoNameEnum
 
 log = logging.getLogger(__name__)
 
@@ -39,12 +41,21 @@ class BlueprintExecutionManager:
         return blueprint_execution
 
 
+class ExecutorRunStatus(AutoNameEnum):
+    NO_INSTRUCTION = auto()
+    TERMINATION_CONDITIONS_MET = auto()
+    CONDITIONS_NOT_MET = auto()
+    OUTCOME_ADAPTER_REJECT = auto()
+    OUTCOME_ACTION_SUCCESS = auto()
+    OUTCOME_ACTION_FAILED = auto()
+
+
 class BlueprintExecutor:
-    # DEFAULT_POLL_TIME = 10
     DEFAULT_WORKER_ID = "unnamed"
     DEFAULT_LOOP_INTERVAL = 5
 
-    def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None, no_sleep=False):
+    def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None,
+                 no_sleep=False, rundata_query_log=None):
         self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
         self.blueprint_manager = blueprint_manager
@@ -52,24 +63,34 @@ class BlueprintExecutor:
         self.iteration_count = 0
         self.max_iteration_count = max_iteration_count
         self.no_sleep = no_sleep
+        self.rundata_query_log = rundata_query_log
 
     def run(self):
         log.info('Starting BlueprintExecutor')
         while True:
+
             self.iteration_count += 1
             instruction_state: BlueprintInstructionState = self.execution_store.get_instruction_to_process(self.worker_id)
-
             if not instruction_state:
+                run_status = ExecutorRunStatus.NO_INSTRUCTION
                 log.info("No Blueprint Execution Instruction State found from execution_store")
-                if self._reached_max_iterations():
-                    break
-                self._sleep()
-                continue
+            else:
+                run_status: ExecutorRunStatus = self._process_instruction(instruction_state)
 
-            self._process_instruction(instruction_state)
-            self._sleep()
+            rundata = {
+                'worker_id': self.worker_id,
+                'instruction_state_id': getattr(instruction_state, 'id_', None),
+                'blueprint_execution_id': getattr(instruction_state, 'blueprint_execution_id', None),
+                'run_status': run_status
+            }
+
+            log.info(f"BlueprintExecutor RUNDATA={rundata}")
+            if self.rundata_query_log:
+                self.rundata_query_log(rundata)
+
             if self._reached_max_iterations():
                 break
+            self._sleep()
 
     def _reached_max_iterations(self):
         if self.max_iteration_count and self.iteration_count >= self.max_iteration_count:
@@ -120,23 +141,26 @@ class BlueprintExecutor:
             return True
         return False
 
-    def _process_instruction(self, instruction_state: BlueprintInstructionState):
+    def _process_instruction(self, instruction_state: BlueprintInstructionState) -> Optional[ExecutorRunStatus]:
         log.info(f"Processing BlueprintInstruction {instruction_state}")
         if self._check_termination_conditions(instruction_state):
-            return
+            return ExecutorRunStatus.TERMINATION_CONDITIONS_MET
 
         events = self._check_conditions(instruction_state.instruction.conditions, instruction_state.blueprint_execution_id)
         if len(events) != len(instruction_state.instruction.conditions):
             log.info(f"Could not find all necessary events to execute outcome. Found: {events} Required: {instruction_state.instruction.conditions}. Skipping.")
             self.execution_store.requeue(instruction_state)
-            return
+            return ExecutorRunStatus.CONDITIONS_NOT_MET
         try:
             self._execute_outcome(instruction_state, events)
         except NoActionRequired:
             log.info("Received NoActionRequired")
             self.execution_store.requeue(instruction_state)
+            return ExecutorRunStatus.OUTCOME_ADAPTER_REJECT
         except Exception:
             log.exception("Unexpected Exception")
             self.execution_store.report_failure(instruction_state)
+            return ExecutorRunStatus.OUTCOME_ACTION_FAILED
         else:
             self.execution_store.acknowledge_success(instruction_state)
+            return ExecutorRunStatus.OUTCOME_ACTION_SUCCESS
