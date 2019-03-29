@@ -81,7 +81,7 @@ class BlueprintExecutor:
                 'worker_id': self.worker_id,
                 'instruction_state_id': getattr(instruction_state, 'id_', None),
                 'blueprint_execution_id': getattr(instruction_state, 'blueprint_execution_id', None),
-                'run_status': run_status
+                'run_status': run_status.value
             }
 
             log.info(f"BlueprintExecutor RUNDATA={rundata}")
