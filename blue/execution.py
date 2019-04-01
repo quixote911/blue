@@ -4,6 +4,8 @@ from enum import auto
 from typing import List, Dict, Optional
 
 import time
+
+import datetime
 from dataclasses import asdict
 
 from blue.base import BlueError, BlueprintInstructionExecutionStore, EventBus, Event, BlueprintInstructionOutcome, InstructionStatus, BlueprintInstructionState, \
@@ -55,7 +57,7 @@ class BlueprintExecutor:
     DEFAULT_LOOP_INTERVAL = 5
 
     def __init__(self, execution_manager: BlueprintExecutionManager, blueprint_manager: BlueprintManager, worker_id=None, max_iteration_count=None,
-                 no_sleep=False, rundata_query_log=None):
+                 no_sleep=False, rundata_callback=None):
         self.execution_store: BlueprintInstructionExecutionStore = execution_manager.execution_store
         self.event_bus: EventBus = execution_manager.event_bus
         self.blueprint_manager = blueprint_manager
@@ -63,7 +65,7 @@ class BlueprintExecutor:
         self.iteration_count = 0
         self.max_iteration_count = max_iteration_count
         self.no_sleep = no_sleep
-        self.rundata_query_log = rundata_query_log
+        self.rundata_callback = rundata_callback
 
     def run(self):
         log.info('Starting BlueprintExecutor')
@@ -81,12 +83,13 @@ class BlueprintExecutor:
                 'worker_id': self.worker_id,
                 'instruction_state_id': getattr(instruction_state, 'id_', None),
                 'blueprint_execution_id': getattr(instruction_state, 'blueprint_execution_id', None),
-                'run_status': run_status.value
+                'run_status': run_status.value,
+                'timestamp': datetime.datetime.now().isoformat(),
             }
 
             log.info(f"BlueprintExecutor RUNDATA={rundata}")
-            if self.rundata_query_log:
-                self.rundata_query_log(rundata)
+            if self.rundata_callback:
+                self.rundata_callback(rundata)
 
             if self._reached_max_iterations():
                 break

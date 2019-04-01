@@ -66,6 +66,6 @@ def test_blueprint_executor_with_run_query_log(sample_namespace_config, sample_b
 
     bem, bm = basic_initialize_execution_manager(sample_namespace_config, sample_blueprint_definition)
     f = Foo()
-    bex = BlueprintExecutor(bem, bm, 'worker-testrunner', 1, rundata_query_log=f.go)
+    bex = BlueprintExecutor(bem, bm, 'worker-testrunner', 1, rundata_callback=f.go)
     bex.run()
     assert len(f.datas) == 1
