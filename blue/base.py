@@ -58,7 +58,7 @@ class InstructionStatus(AutoNameEnum):
     PROCESSING = auto()
     SUCCESS = auto()
     FAILED = auto()
-    END = auto
+    END = auto()
 
 
 @dataclass
