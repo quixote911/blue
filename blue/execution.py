@@ -80,11 +80,10 @@ class BlueprintExecutor:
                 run_status: ExecutorRunStatus = self._process_instruction(instruction_state)
 
             rundata = {
+                'isotime': datetime.datetime.now().isoformat(),
+                'instruction_state': instruction_state,
                 'worker_id': self.worker_id,
-                'instruction_state_id': getattr(instruction_state, 'id_', None),
-                'blueprint_execution_id': getattr(instruction_state, 'blueprint_execution_id', None),
                 'run_status': run_status.value,
-                'timestamp': datetime.datetime.now().isoformat(),
             }
 
             log.info(f"BlueprintExecutor RUNDATA={rundata}")
